@@ -15,6 +15,9 @@ const ipCooldowns = new Map(); // userId -> timestamp da última resposta autom�
 // Cobre "qual o ip", "qual é o ip", "ip do servidor/server", "manda o ip", "me passa o ip", "tem ip?" etc.
 // \bip\b evita bater em palavras que só contêm "ip" (ex: "principal", "equipe").
 const IP_QUESTION_RE = /\b(ip|endereço)\b.*\b(servidor|server|jogo)\b|\b(qual|quero|manda|passa|me\s*(dá|passa))\b.*\bip\b|\bip\b.*\bpra\s*(entrar|jogar)\b/i;
+// Mensagem que é SÓ "ip" (com/sem pontuação, emoji de "?" etc) — ex: "ip", "ip?", "ip!!", "IP" — cobre quem
+// não escreve frase nenhuma, só manda a palavra sozinha perguntando.
+const IP_ONLY_RE = /^ip[?!.\s]*$/i;
 
 async function handleTicketAutoReply(message, ticket) {
   if (message.author.id !== ticket.openerId) return;
@@ -64,7 +67,10 @@ async function handleAjudaDetector(message, cfg) {
 
 async function handleIpDetector(message, cfg) {
   if (!cfg.serverIp) return; // nada configurado ainda — não tem o que responder
-  if (!IP_QUESTION_RE.test(message.content)) return;
+
+  const content = message.content.trim();
+  const matches = IP_ONLY_RE.test(content) || IP_QUESTION_RE.test(content);
+  if (!matches) return;
 
   const lastReply = ipCooldowns.get(message.author.id) || 0;
   if (Date.now() - lastReply < IP_COOLDOWN_MS) return;
