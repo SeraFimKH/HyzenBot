@@ -18,9 +18,25 @@ export function successEmbed(description) {
 // está online, então a mensagem distingue os dois casos em vez de mostrar "0" para uma falha de consulta.
 export function buildServerInfoEmbed(cfg, onlineCount) {
   const endereco = cfg.serverPort ? `${cfg.serverIp}:${cfg.serverPort}` : cfg.serverIp;
-  const playersField = onlineCount === null ? "Não foi possível consultar agora" : `${onlineCount} jogador(es) online`;
+
+  const known = onlineCount !== null;
+  const online = known && onlineCount > 0;
+
+  const statusLine = !known ? "🟡 Status indisponível no momento" : online ? "🟢 Servidor online agora" : "⚪ Nenhum jogador online no momento";
+  const playersValue = known ? `**${onlineCount}** jogador${onlineCount === 1 ? "" : "es"}` : "—";
+
+  // Verde com gente jogando, cinza (cor padrão da marca) quando vazio, amarelo se não deu pra consultar —
+  // mesmo espírito do bolinha-de-status colorida que /perfil já usa para online/offline.
+  const color = !known ? 0xfaa61a : online ? 0x57f287 : config.brandColor;
 
   return baseEmbed(cfg.communityName)
-    .setTitle(`🌐 ${cfg.communityName}`)
-    .addFields({ name: "IP", value: `\`${endereco}\``, inline: true }, { name: "Jogadores", value: playersField, inline: true });
+    .setColor(color)
+    .setTitle(`🌐 Conecte-se ao ${cfg.communityName}`)
+    .setDescription(`${statusLine}\n\nClique no endereço abaixo para copiar e cole no seu cliente Minecraft.`)
+    .addFields(
+      { name: "📡 Endereço", value: `\`\`\`${endereco}\`\`\``, inline: false },
+      { name: "👥 Jogadores", value: playersValue, inline: true },
+      { name: "​", value: "​", inline: true },
+      { name: "🕹️ Versão", value: "Bedrock", inline: true },
+    );
 }
