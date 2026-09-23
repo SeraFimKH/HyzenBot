@@ -92,6 +92,7 @@ function defaultConfig() {
     texts: {},
     announcePingRoleId: null,
     serverIp: null,
+    serverPort: null,
   };
 }
 

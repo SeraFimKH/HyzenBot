@@ -387,7 +387,7 @@ export async function handleNomeComunidadeModalSubmit(interaction) {
 async function handleOpenServerIpModal(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
-  const modal = new ModalBuilder().setCustomId("server_ip_modal").setTitle("IP do Servidor");
+  const modal = new ModalBuilder().setCustomId("server_ip_modal").setTitle("Endereço do Servidor");
 
   const ipInput = new TextInputBuilder()
     .setCustomId("ip")
@@ -397,13 +397,22 @@ async function handleOpenServerIpModal(interaction) {
     .setMaxLength(100)
     .setRequired(true);
 
-  modal.addComponents(new ActionRowBuilder().addComponents(ipInput));
+  const portInput = new TextInputBuilder()
+    .setCustomId("porta")
+    .setLabel("Porta (deixe vazio para não mostrar)")
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder(cfg.serverPort ? String(cfg.serverPort) : "19132")
+    .setMaxLength(5)
+    .setRequired(false);
+
+  modal.addComponents(new ActionRowBuilder().addComponents(ipInput), new ActionRowBuilder().addComponents(portInput));
 
   await interaction.showModal(modal);
 }
 
 export async function handleServerIpModalSubmit(interaction) {
   const ip = interaction.fields.getTextInputValue("ip").trim();
+  const portaRaw = interaction.fields.getTextInputValue("porta").trim();
 
   if (!ip) {
     return interaction.reply({
@@ -412,16 +421,31 @@ export async function handleServerIpModalSubmit(interaction) {
     });
   }
 
+  let porta = null;
+  if (portaRaw) {
+    const parsed = Number(portaRaw);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
+      return interaction.reply({
+        embeds: [baseEmbed().setColor(0xed4245).setDescription("❌ Porta inválida — informe um número entre 1 e 65535, ou deixe vazio.")],
+        ephemeral: true,
+      });
+    }
+    porta = parsed;
+  }
+
   const cfg = updateGuildConfig(interaction.guildId, (c) => {
     c.serverIp = ip;
+    c.serverPort = porta;
   });
+
+  const enderecoTexto = porta ? `${ip}:${porta}` : ip;
 
   if (interaction.isFromMessage()) {
     return interaction.update(buildMainPanel(cfg));
   }
 
   return interaction.reply({
-    embeds: [baseEmbed().setDescription(`✅ IP do servidor definido como **${ip}**.`)],
+    embeds: [baseEmbed().setDescription(`✅ Endereço do servidor definido como **${enderecoTexto}**.`)],
     ephemeral: true,
   });
 }

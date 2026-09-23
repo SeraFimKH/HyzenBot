@@ -1,7 +1,7 @@
 import { getGuildConfig } from "../database/guildConfig.js";
 import { getTicket, updateTicket } from "../database/tickets.js";
 import { getOnlinePlayerCount } from "../database/redis.js";
-import { baseEmbed } from "../utils/embeds.js";
+import { baseEmbed, buildServerInfoEmbed } from "../utils/embeds.js";
 import { isWithinSupportHours } from "../utils/businessHours.js";
 import { generateTicketAiReply } from "../utils/ticketAi.js";
 import { getText } from "../utils/textDefaults.js";
@@ -71,15 +71,7 @@ async function handleIpDetector(message, cfg) {
   ipCooldowns.set(message.author.id, Date.now());
 
   const count = await getOnlinePlayerCount();
-  const playersField = count === null ? "Não foi possível consultar agora" : `${count} jogador(es) online`;
-
-  await message.reply({
-    embeds: [
-      baseEmbed(cfg.communityName)
-        .setTitle(`🌐 ${cfg.communityName}`)
-        .addFields({ name: "IP", value: `\`${cfg.serverIp}\``, inline: true }, { name: "Jogadores", value: playersField, inline: true }),
-    ],
-  });
+  await message.reply({ embeds: [buildServerInfoEmbed(cfg, count)] });
 }
 
 export const name = "messageCreate";
