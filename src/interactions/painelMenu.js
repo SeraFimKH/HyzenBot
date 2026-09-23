@@ -384,6 +384,48 @@ export async function handleNomeComunidadeModalSubmit(interaction) {
   });
 }
 
+async function handleOpenServerIpModal(interaction) {
+  const cfg = getGuildConfig(interaction.guildId);
+
+  const modal = new ModalBuilder().setCustomId("server_ip_modal").setTitle("IP do Servidor");
+
+  const ipInput = new TextInputBuilder()
+    .setCustomId("ip")
+    .setLabel("IP usado pelo /ip e detector de chat")
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder(cfg.serverIp || "play.hyzennetwork.com")
+    .setMaxLength(100)
+    .setRequired(true);
+
+  modal.addComponents(new ActionRowBuilder().addComponents(ipInput));
+
+  await interaction.showModal(modal);
+}
+
+export async function handleServerIpModalSubmit(interaction) {
+  const ip = interaction.fields.getTextInputValue("ip").trim();
+
+  if (!ip) {
+    return interaction.reply({
+      embeds: [baseEmbed().setColor(0xed4245).setDescription("❌ Informe um IP.")],
+      ephemeral: true,
+    });
+  }
+
+  const cfg = updateGuildConfig(interaction.guildId, (c) => {
+    c.serverIp = ip;
+  });
+
+  if (interaction.isFromMessage()) {
+    return interaction.update(buildMainPanel(cfg));
+  }
+
+  return interaction.reply({
+    embeds: [baseEmbed().setDescription(`✅ IP do servidor definido como **${ip}**.`)],
+    ephemeral: true,
+  });
+}
+
 export async function handleMenuSelect(interaction) {
   const value = interaction.values[0];
   const cfg = getGuildConfig(interaction.guildId);
@@ -440,6 +482,10 @@ export async function handleMenuSelect(interaction) {
 
   if (value === "nome_comunidade") {
     return handleOpenNomeComunidadeModal(interaction);
+  }
+
+  if (value === "server_ip") {
+    return handleOpenServerIpModal(interaction);
   }
 
   if (value.startsWith("texto_")) {

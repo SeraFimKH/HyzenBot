@@ -91,6 +91,7 @@ function defaultConfig() {
     verifiedRoleId: null,
     texts: {},
     announcePingRoleId: null,
+    serverIp: null,
   };
 }
 

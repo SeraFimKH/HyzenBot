@@ -65,6 +65,7 @@ export async function execute(interaction) {
       if (interaction.customId === "sorteio_preco_modal") return await painelMenu.handleSorteioPrecoModalSubmit(interaction);
       if (interaction.customId === "bot_nome_modal") return await painelMenu.handleBotNomeModalSubmit(interaction);
       if (interaction.customId === "nome_comunidade_modal") return await painelMenu.handleNomeComunidadeModalSubmit(interaction);
+      if (interaction.customId === "server_ip_modal") return await painelMenu.handleServerIpModalSubmit(interaction);
       if (interaction.customId === "ai_key_modal") return await aiConfig.handleAiKeyModalSubmit(interaction);
       if (interaction.customId === "ai_context_modal") return await aiConfig.handleAiContextModalSubmit(interaction);
       if (interaction.customId.startsWith("text_edit_modal:")) return await textConfig.handleTextModalSubmit(interaction);

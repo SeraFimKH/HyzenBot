@@ -77,6 +77,7 @@ const CATEGORIES = [
       { label: "Cargos Staff", description: "Quem pode assumir/fechar tickets", value: "cargo_staff", emoji: "🙋" },
       { label: "Nome do Bot no Servidor", description: "Muda o apelido do bot neste servidor", value: "bot_nome", emoji: "🏷️" },
       { label: "Nome da Comunidade", description: "Nome usado nos embeds públicos (rodapé, títulos, etc)", value: "nome_comunidade", emoji: "🏢" },
+      { label: "IP do Servidor", description: "Usado pelo /ip e quando alguém pergunta o IP no chat", value: "server_ip", emoji: "🌐" },
     ],
   },
   {

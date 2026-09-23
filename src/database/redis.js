@@ -22,6 +22,27 @@ export async function getPresence(playerId) {
   }
 }
 
+// No aggregate counter exists on the Java side (HyzenCore only ever writes one hyzen:presence:{playerId} hash
+// per online player, see getPresence above) — SCAN (not KEYS) so this never blocks Redis even with thousands
+// of players online. Returns null (not 0) on failure so callers can tell "nobody online" apart from
+// "couldn't ask" and word the reply accordingly.
+export async function getOnlinePlayerCount() {
+  try {
+    if (redis.status === "wait") await redis.connect();
+    let cursor = "0";
+    let count = 0;
+    do {
+      const [nextCursor, keys] = await redis.scan(cursor, "MATCH", "hyzen:presence:*", "COUNT", 200);
+      cursor = nextCursor;
+      count += keys.length;
+    } while (cursor !== "0");
+    return count;
+  } catch (err) {
+    console.error("[redis] failed to count online players", err.message);
+    return null;
+  }
+}
+
 const STAFF_ACTIONS_CHANNEL = "hyzen:staff-actions";
 
 // HyzenStaff (Java) subscribes to this same channel (RedisStaffActionListener) so a punishment issued here
