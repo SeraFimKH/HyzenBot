@@ -17,8 +17,6 @@ export function successEmbed(description) {
 // lugares. `onlineCount` é null quando o Redis não respondeu (ver getOnlinePlayerCount), não quando ninguém
 // está online, então a mensagem distingue os dois casos em vez de mostrar "0" para uma falha de consulta.
 export function buildServerInfoEmbed(cfg, onlineCount) {
-  const endereco = cfg.serverPort ? `${cfg.serverIp}:${cfg.serverPort}` : cfg.serverIp;
-
   const known = onlineCount !== null;
   const online = known && onlineCount > 0;
 
@@ -32,9 +30,11 @@ export function buildServerInfoEmbed(cfg, onlineCount) {
   return baseEmbed(cfg.communityName)
     .setColor(color)
     .setTitle(`🌐 Conecte-se ao ${cfg.communityName}`)
-    .setDescription(`${statusLine}\n\nClique no endereço abaixo para copiar e cole no seu cliente Minecraft.`)
+    .setDescription(`${statusLine}\n\nClique no IP e na porta abaixo para copiar e cole no seu cliente Minecraft.`)
     .addFields(
-      { name: "📡 Endereço", value: `\`\`\`${endereco}\`\`\``, inline: false },
+      { name: "📡 IP", value: `\`\`\`${cfg.serverIp}\`\`\``, inline: true },
+      { name: "🔌 Porta", value: `\`\`\`${cfg.serverPort || "19132 (padrão)"}\`\`\``, inline: true },
+      { name: "​", value: "​", inline: false },
       { name: "👥 Jogadores", value: playersValue, inline: true },
       { name: "​", value: "​", inline: true },
       { name: "🕹️ Versão", value: "Bedrock", inline: true },
