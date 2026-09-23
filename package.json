@@ -1,0 +1,21 @@
+{
+  "name": "hyzen-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "HyzenBot — Discord bot for the Hyzen Network. Tickets w/ AI auto-reply, Mercado Pago Pix, key stock, raffles, polls, invite tracking, rules/verification, changelog, and the account-linking side of HyzenAuth. Ported from NobelGaming's own Discord bot, merged with the Hyzen-specific /verificar + /painel-verificacao auth flow.",
+  "scripts": {
+    "start": "node src/index.js",
+    "deploy-commands": "node src/deployCommands.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5",
+    "ioredis": "^6.0.0",
+    "pg": "^8.13.1",
+    "qrcode": "^1.5.4"
+  }
+}
