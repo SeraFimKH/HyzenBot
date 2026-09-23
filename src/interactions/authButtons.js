@@ -52,7 +52,7 @@ export function buildAuthPanelMessage() {
         .setColor(0x1f6f63)
         .setTitle("Verificação de conta")
         .setDescription(
-          "Vincule sua conta do Discord ao seu jogador na Hyzen Network.\n\n" +
+          "Vincule sua conta do Discord ao servidor na Hyzen Network.\n\n" +
             "Clique no botão abaixo pra gerar seu código de verificação.",
         ),
     ],
