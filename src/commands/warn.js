@@ -2,12 +2,12 @@ import { SlashCommandBuilder } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { isStaff } from "../utils/permissions.js";
 import { errorEmbed, successEmbed } from "../utils/embeds.js";
-import { insertWarn, countActiveWarnings } from "../database/punishments.js";
+import { insertWarn, countActiveWarnings, PunishmentType } from "../database/punishments.js";
 import { resolveStaffId } from "../utils/staffContext.js";
 import { resolveTargetPlayer } from "../utils/playerResolver.js";
 import { publishStaffAction } from "../database/redis.js";
 import { postStaffLog, punishmentLogEmbed, dmPunishedPlayer } from "../utils/staffLog.js";
-import { baseEmbed } from "../utils/embeds.js";
+import { punishmentNoticeEmbed } from "../utils/punishmentNotice.js";
 
 export const data = new SlashCommandBuilder()
   .setName("warn")
@@ -52,14 +52,7 @@ export async function execute(interaction) {
   await dmPunishedPlayer(
     interaction.client,
     player.id,
-    baseEmbed()
-      .setColor(0xfee75c)
-      .setTitle("⚠️ Você recebeu uma advertência")
-      .addFields(
-        { name: "Staff", value: interaction.user.tag, inline: true },
-        { name: "Motivo", value: motivo },
-        { name: "Advertências ativas", value: `${total}` },
-      ),
+    punishmentNoticeEmbed({ type: PunishmentType.WARN, staff: interaction.user.tag, reason: motivo, activeWarnings: total }),
   );
 
   return interaction.editReply({

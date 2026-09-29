@@ -13,13 +13,15 @@ import { findIpBansAfter, findRevokedIpBans, latestIpBanId } from "../database/i
 import { databaseTime } from "../database/databaseClock.js";
 import { baseEmbed } from "../utils/embeds.js";
 import { discordTimestamp } from "../utils/format.js";
-import { broadcastStaffLog, punishmentLogEmbed } from "../utils/staffLog.js";
+import { punishmentNoticeEmbed } from "../utils/punishmentNotice.js";
+import { broadcastStaffLog, dmPunishedPlayer, punishmentLogEmbed } from "../utils/staffLog.js";
 
 // Punishments applied in the game (HyzenStaff: /punir, /despunir and its forms) are written straight to Postgres —
 // nothing ever told this bot about them, so the ban/mute/warn log channels only ever showed what was done through
 // the bot's own commands (plus expiries, see expirySweep.js). This reads the new and the revoked rows every few
-// seconds and posts them to the same channels, in the same format as /ban, /mute, /warn, /unban and /unmute.
-// The bot's own actions are skipped — each command already logged it (see DISCORD_ORIGIN and wasRevokedHere).
+// seconds and posts them to the same channels, in the same format as /ban, /mute, /warn, /unban and /unmute — and,
+// like those commands, tells the punished player in a Discord DM when their account is linked (/verificar).
+// The bot's own actions are skipped — each command already did all that (see DISCORD_ORIGIN and wasRevokedHere).
 
 const SWEEP_INTERVAL_MS = 15_000;
 // A row is only read once it's this old: one written by a transaction that commits late can't be jumped over by
@@ -88,23 +90,33 @@ async function announceApplied(client, names) {
     const log = APPLIED_LOGS[row.type];
     if (!log || row.server === DISCORD_ORIGIN) continue;
 
-    await announce(client, log.channel, async () => {
+    await safely(`${row.type} #${row.id}`, async () => {
+      const staff = await staffNameOf(row.staff_id, names);
+      const reason = reasonOf(row);
+      const activeWarnings = row.type === PunishmentType.WARN ? await countActiveWarnings(row.player_id) : null;
+
       const extraFields = [];
-      if (row.expires_at) {
-        extraFields.push({ name: "Expira em", value: discordTimestamp(row.expires_at, "F"), inline: true });
-      }
-      if (row.type === PunishmentType.WARN) {
-        extraFields.push({ name: "Total ativo", value: `${await countActiveWarnings(row.player_id)}`, inline: true });
-      }
+      if (row.expires_at) extraFields.push(expiryField(row.expires_at));
+      if (activeWarnings !== null) extraFields.push({ name: "Total ativo", value: `${activeWarnings}`, inline: true });
       extraFields.push(serverField(row.server));
-      return punishmentLogEmbed({
-        title: log.title,
-        color: log.color,
-        player: { name: await nameOf(row.player_id, names) },
-        staffTag: await staffNameOf(row.staff_id, names),
-        reason: reasonOf(row),
-        extraFields,
-      });
+      await broadcastStaffLog(
+        client,
+        log.channel,
+        punishmentLogEmbed({
+          title: log.title,
+          color: log.color,
+          player: { name: await nameOf(row.player_id, names) },
+          staffTag: staff,
+          reason,
+          extraFields,
+        }),
+      );
+
+      await dmPunishedPlayer(
+        client,
+        row.player_id,
+        punishmentNoticeEmbed({ type: row.type, staff, reason, expiresAt: row.expires_at, activeWarnings }),
+      );
     });
   }
 }
@@ -112,16 +124,27 @@ async function announceApplied(client, names) {
 async function announceIpBans(client, names) {
   const rows = await readNewRows("lastIpBanId", latestIpBanId, findIpBansAfter);
   for (const row of rows) {
-    await announce(client, IP_BAN_LOG.channel, async () =>
-      punishmentLogEmbed({
-        title: IP_BAN_LOG.title,
-        color: IP_BAN_LOG.color,
-        player: { name: row.player_id !== null ? await nameOf(row.player_id, names) : "Desconhecido" },
-        staffTag: await staffNameOf(row.staff_id, names),
-        reason: reasonOf(row),
-        extraFields: row.expires_at ? [{ name: "Expira em", value: discordTimestamp(row.expires_at, "F"), inline: true }] : [],
-      }),
-    );
+    await safely(`IPBAN #${row.id}`, async () => {
+      const staff = await staffNameOf(row.staff_id, names);
+      const reason = reasonOf(row);
+      await broadcastStaffLog(
+        client,
+        IP_BAN_LOG.channel,
+        punishmentLogEmbed({
+          title: IP_BAN_LOG.title,
+          color: IP_BAN_LOG.color,
+          player: { name: row.player_id !== null ? await nameOf(row.player_id, names) : "Desconhecido" },
+          staffTag: staff,
+          reason,
+          extraFields: row.expires_at ? [expiryField(row.expires_at)] : [],
+        }),
+      );
+
+      // Bans written before hyzen_ip_bans had player_id aren't tied to any account.
+      if (row.player_id !== null) {
+        await dmPunishedPlayer(client, row.player_id, punishmentNoticeEmbed({ type: "IPBAN", staff, reason, expiresAt: row.expires_at }));
+      }
+    });
   }
 }
 
@@ -138,28 +161,36 @@ async function announceRevoked(client, names) {
     const log = REVOKED_LOGS[row.type];
     if (!log || wasRevokedHere(row.id)) continue;
 
-    await announce(client, log.channel, async () =>
-      punishmentLogEmbed({
-        title: log.title,
-        color: REVOKED_COLOR,
-        player: { name: await nameOf(row.player_id, names) },
-        staffTag: await staffNameOf(row.revoked_by, names),
-        reason: reasonOf(row),
-        extraFields: [serverField(row.server)],
-      }),
+    await safely(`revoked ${row.type} #${row.id}`, async () =>
+      broadcastStaffLog(
+        client,
+        log.channel,
+        punishmentLogEmbed({
+          title: log.title,
+          color: REVOKED_COLOR,
+          player: { name: await nameOf(row.player_id, names) },
+          staffTag: await staffNameOf(row.revoked_by, names),
+          reason: reasonOf(row),
+          extraFields: [serverField(row.server)],
+        }),
+      ),
     );
   }
 
   // hyzen_ip_bans has no revoked_by column — who lifted it isn't recorded.
   for (const row of await findRevokedIpBans(after, upTo)) {
-    await announce(client, IP_UNBAN_LOG.channel, async () =>
-      baseEmbed()
-        .setColor(REVOKED_COLOR)
-        .setTitle(IP_UNBAN_LOG.title)
-        .addFields(
-          { name: "Jogador", value: row.player_id !== null ? await nameOf(row.player_id, names) : "Desconhecido", inline: true },
-          { name: "Motivo original", value: reasonOf(row) },
-        ),
+    await safely(`revoked IPBAN #${row.id}`, async () =>
+      broadcastStaffLog(
+        client,
+        IP_UNBAN_LOG.channel,
+        baseEmbed()
+          .setColor(REVOKED_COLOR)
+          .setTitle(IP_UNBAN_LOG.title)
+          .addFields(
+            { name: "Jogador", value: row.player_id !== null ? await nameOf(row.player_id, names) : "Desconhecido", inline: true },
+            { name: "Motivo original", value: reasonOf(row) },
+          ),
+      ),
     );
   }
 }
@@ -186,12 +217,12 @@ async function readNewRows(storeKey, latestId, findAfter) {
   return settled.filter((row) => !row.stale);
 }
 
-// Each log line is built and posted on its own, so one failure (a lookup, Discord) only costs that line.
-async function announce(client, channelKey, buildEmbed) {
+// Each row is handled on its own, so one failure (a lookup, Discord) only costs that row.
+async function safely(label, handle) {
   try {
-    await broadcastStaffLog(client, channelKey, await buildEmbed());
+    await handle();
   } catch (err) {
-    console.error(`[punishmentFeed] failed to announce on ${channelKey}`, err.message);
+    console.error(`[punishmentFeed] failed on ${label}`, err.message);
   }
 }
 
@@ -207,6 +238,10 @@ async function nameOf(playerId, names) {
 // The game writes no staff id for the console.
 function staffNameOf(staffId, names) {
   return staffId === null ? "Console" : nameOf(staffId, names);
+}
+
+function expiryField(expiresAt) {
+  return { name: "Expira em", value: discordTimestamp(expiresAt, "F"), inline: true };
 }
 
 function serverField(server) {

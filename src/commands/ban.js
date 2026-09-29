@@ -9,7 +9,7 @@ import { resolveTargetPlayer } from "../utils/playerResolver.js";
 import { publishStaffAction } from "../database/redis.js";
 import { discordTimestamp } from "../utils/format.js";
 import { postStaffLog, punishmentLogEmbed, dmPunishedPlayer } from "../utils/staffLog.js";
-import { baseEmbed } from "../utils/embeds.js";
+import { punishmentNoticeEmbed, untilText } from "../utils/punishmentNotice.js";
 
 export const data = new SlashCommandBuilder()
   .setName("ban")
@@ -69,7 +69,7 @@ export async function execute(interaction) {
     staffTag: interaction.user.tag,
   });
 
-  const duracaoTexto = punishment.expires_at ? `até ${discordTimestamp(punishment.expires_at, "F")}` : "**permanentemente**";
+  const duracaoTexto = untilText(punishment.expires_at);
 
   await postStaffLog(
     interaction.guild,
@@ -87,11 +87,7 @@ export async function execute(interaction) {
   await dmPunishedPlayer(
     interaction.client,
     player.id,
-    baseEmbed()
-      .setColor(0xed4245)
-      .setTitle("🔨 Você foi banido")
-      .setDescription(`Você foi banido ${duracaoTexto}.`)
-      .addFields({ name: "Staff", value: interaction.user.tag, inline: true }, { name: "Motivo", value: motivo }),
+    punishmentNoticeEmbed({ type: punishment.type, staff: interaction.user.tag, reason: motivo, expiresAt: punishment.expires_at }),
   );
 
   return interaction.editReply({
