@@ -1,4 +1,6 @@
 import { ActivityType } from "discord.js";
+import Redis from "ioredis";
+import { config } from "../config.js";
 import { JsonStore } from "../database/jsonStore.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { getNetworkStatus, setNetworkStatus, StatusMode } from "../database/networkStatus.js";
@@ -14,6 +16,7 @@ const PANEL_REFRESH_MS = 60_000;
 // row found nothing — one lost ping (it's UDP) or one Redis hiccup isn't an outage.
 const OUTAGE_CONFIRMATIONS = 2;
 const DEFAULT_BEDROCK_PORT = 19132;
+const NETWORK_STATUS_CHANNEL = "hyzen:network-status";
 const UNKNOWN_MESSAGE = 10008;
 
 const PRESENCE_STATUS = {
@@ -48,14 +51,60 @@ export async function currentServerStatus(client) {
 export async function setStatusMode(client, mode, reason, changedBy) {
   const network = await setNetworkStatus(mode, reason, changedBy);
   missedPolls = OUTAGE_CONFIRMATIONS; // what the staff just chose is shown at once, no confirmation needed
-  const status = await refreshServerStatus(client);
+  const status = await freshServerStatus(client);
   return { network, status };
+}
+
+// Turns a message the bot already posted (the reply of /status) into the status panel of that server: from now on
+// it's the one kept up to date, in that channel.
+export async function pinStatusPanel(client, guild, channelId, messageId) {
+  updateGuildConfig(guild.id, (c) => {
+    c.channels.status = channelId;
+    c.statusPanelChannelId = channelId;
+    c.statusPanelMessageId = messageId;
+  });
+  panels.delete(guild.id);
+  return freshServerStatus(client);
 }
 
 export function startServerStatus(client) {
   const tick = () => refreshServerStatus(client).catch((err) => console.error("[serverStatus] refresh failed", err));
   tick();
   setInterval(tick, POLL_INTERVAL_MS);
+  listenForModeChanges(client);
+}
+
+// HyzenCore publishes on hyzen:network-status when someone uses /manutencao in the game (and this bot does when
+// the mode is set from Discord). Refreshing right then is what makes the presence and the panel switch to "em
+// manutenção" within a second, by themselves, instead of on the next poll. A connection of its own, as in
+// services/gameEvents.js: one that issued SUBSCRIBE can't run normal commands anymore.
+function listenForModeChanges(client) {
+  const subscriber = new Redis(config.redis);
+  let failing = false;
+
+  subscriber.on("error", (err) => {
+    // ioredis keeps trying to reconnect: one line when it goes away is enough.
+    if (!failing) console.error("[serverStatus] redis subscription error", err.message);
+    failing = true;
+  });
+  subscriber.on("ready", () => {
+    failing = false;
+  });
+
+  subscriber.subscribe(NETWORK_STATUS_CHANNEL, (err) => {
+    if (err) console.error("[serverStatus] failed to subscribe", err.message);
+  });
+
+  subscriber.on("message", () => {
+    missedPolls = OUTAGE_CONFIRMATIONS; // the staff just changed the mode: shown at once
+    freshServerStatus(client).catch((err) => console.error("[serverStatus] refresh failed", err));
+  });
+}
+
+// After something changed: a refresh already running may have read the old state, so wait for it and look again.
+async function freshServerStatus(client) {
+  if (polling) await polling.catch(() => {});
+  return refreshServerStatus(client);
 }
 
 // One refresh at a time: a caller arriving while one is running gets that one's result.
@@ -150,7 +199,7 @@ async function updatePanel(guild, status) {
   const channelId = cfg.channels.status;
   if (!channelId) return;
 
-  const embed = buildStatusEmbed(cfg, status);
+  const embed = buildStatusEmbed(cfg, status, guild.iconURL({ size: 256 }));
   const signature = JSON.stringify({ ...embed.data, timestamp: null, channelId });
   const panel = panels.get(guild.id) || {};
   if (panel.signature === signature && Date.now() - panel.editedAt < PANEL_REFRESH_MS) return;

@@ -1,7 +1,9 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, PermissionsBitField, TextInputBuilder, TextInputStyle } from "discord.js";
+import { getGuildConfig } from "../database/guildConfig.js";
 import { getCachedNetworkStatus, StatusMode, StatusTableMissingError } from "../database/networkStatus.js";
-import { currentServerStatus, setStatusMode } from "../services/serverStatus.js";
-import { errorEmbed } from "../utils/embeds.js";
+import { currentServerStatus, pinStatusPanel, setStatusMode } from "../services/serverStatus.js";
+import { errorEmbed, successEmbed } from "../utils/embeds.js";
+import { isAdmin } from "../utils/permissions.js";
 import { buildStatusModeEmbed, MODE_VIEW } from "../utils/statusEmbed.js";
 
 // O motivo vai para um VARCHAR(255) e aparece na tela de desconexão do jogo.
@@ -13,6 +15,15 @@ const MODES_WITH_REASON = [StatusMode.MAINTENANCE, StatusMode.OFFLINE];
 
 const BUTTON_PREFIX = "painel_status_";
 const MODAL_PREFIX = "status_reason_modal:";
+export const PIN_BUTTON_ID = "status_pin";
+
+// O que o bot precisa no canal para manter o painel: achar a mensagem de novo e editá-la.
+const PANEL_PERMISSIONS = [
+  [PermissionsBitField.Flags.ViewChannel, "Ver canal"],
+  [PermissionsBitField.Flags.SendMessages, "Enviar mensagens"],
+  [PermissionsBitField.Flags.EmbedLinks, "Inserir links"],
+  [PermissionsBitField.Flags.ReadMessageHistory, "Ver histórico de mensagens"],
+];
 
 /**
  * Grava o modo escolhido (o banco + o aviso que faz os servidores aplicarem na hora) e atualiza a presença e o
@@ -89,6 +100,40 @@ export async function handleStatusReasonModalSubmit(interaction) {
     await interaction.deferReply({ ephemeral: true });
   }
   await showResult(interaction, await applyStatusMode(interaction, mode, interaction.fields.getTextInputValue("motivo")));
+}
+
+// O botão que vai embaixo da resposta do /status enquanto o servidor não tem painel de status.
+export function pinPanelRow() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(PIN_BUTTON_ID).setLabel("📌 Manter atualizado neste canal").setStyle(ButtonStyle.Secondary),
+  );
+}
+
+// Transforma a resposta do /status no painel de status: a mesma mensagem passa a ser editada pelo bot sempre que
+// algo muda (jogadores, manutenção, queda), sem ninguém precisar usar /status de novo.
+export async function handleStatusPin(interaction) {
+  const cfg = getGuildConfig(interaction.guildId);
+  if (!isAdmin(interaction.member, cfg)) {
+    return interaction.reply({ embeds: [errorEmbed("Só administradores podem fixar o painel de status.")], ephemeral: true });
+  }
+
+  // O /status responde até em canal que o bot não enxerga; editar a mensagem depois, não.
+  const me = interaction.guild.members.me;
+  const granted = me ? interaction.channel?.permissionsFor(me) : null;
+  const missing = granted ? PANEL_PERMISSIONS.filter(([flag]) => !granted.has(flag)).map(([, name]) => name) : [];
+  if (missing.length) {
+    return interaction.reply({
+      embeds: [errorEmbed(`Para manter o painel aqui o bot precisa destas permissões neste canal: **${missing.join("**, **")}**.`)],
+      ephemeral: true,
+    });
+  }
+
+  await interaction.update({ components: [] });
+  await pinStatusPanel(interaction.client, interaction.guild, interaction.channelId, interaction.message.id);
+  await interaction.followUp({
+    embeds: [successEmbed("Pronto: esta mensagem agora é o painel de status e se atualiza sozinha — jogadores online, manutenção, offline. Para trocar de canal: `/painel` → Servidor do Jogo.")],
+    ephemeral: true,
+  });
 }
 
 async function showResult(interaction, result) {

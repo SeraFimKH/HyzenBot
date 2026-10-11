@@ -51,6 +51,7 @@ export async function execute(interaction) {
       if (customId === "raffle_participar") return await raffleButtons.handleParticipar(interaction);
       if (customId === "painel_ia_on" || customId === "painel_ia_off") return await painelMenu.handleAiToggle(interaction);
       if (customId.startsWith("painel_status_")) return await statusConfig.handleStatusModeButton(interaction);
+      if (customId === statusConfig.PIN_BUTTON_ID) return await statusConfig.handleStatusPin(interaction);
       if (customId === "auth:start") return await handleAuthStart(interaction);
       if (customId === "auth:check") return await handleAuthCheck(interaction);
       return;

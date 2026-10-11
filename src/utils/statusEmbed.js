@@ -2,12 +2,15 @@ import { baseEmbed } from "./embeds.js";
 import { ServerState } from "./serverState.js";
 import { StatusMode } from "../database/networkStatus.js";
 
+// since: o que vem antes do "há 5 minutos" que o Discord escreve para o horário em que o estado começou.
 const STATE_VIEW = {
-  [ServerState.ONLINE]: { emoji: "🟢", label: "Online", color: 0x57f287 },
-  [ServerState.MAINTENANCE]: { emoji: "🛠️", label: "Em manutenção", color: 0xfaa61a },
-  [ServerState.OFFLINE]: { emoji: "🔴", label: "Offline", color: 0xed4245 },
-  [ServerState.UNKNOWN]: { emoji: "🟡", label: "Status indisponível", color: 0x99aab5 },
+  [ServerState.ONLINE]: { emoji: "🟢", label: "Online", color: 0x57f287, since: "No ar" },
+  [ServerState.MAINTENANCE]: { emoji: "🛠️", label: "Em manutenção", color: 0xfaa61a, since: "Começou" },
+  [ServerState.OFFLINE]: { emoji: "🔴", label: "Offline", color: 0xed4245, since: "Fora do ar" },
+  [ServerState.UNKNOWN]: { emoji: "🟡", label: "Status indisponível", color: 0x99aab5, since: "Sem resposta" },
 };
+
+const BAR_SEGMENTS = 20;
 
 export const MODE_VIEW = {
   [StatusMode.AUTO]: { emoji: "🤖", label: "Automático", description: "O bot detecta sozinho se o servidor está online ou offline." },
@@ -64,12 +67,26 @@ export function buildServerInfoEmbed(cfg, status) {
     );
 }
 
-// O painel de status que o bot mantém atualizado no canal escolhido, e a resposta do /status.
-export function buildStatusEmbed(cfg, status) {
-  const view = describeState(status);
-  const since = status.since ? ` · desde <t:${Math.floor(status.since / 1000)}:R>` : "";
+// A barra de lotação do painel: 20 quadradinhos, cheios na proporção de jogadores online.
+function playersBar(players, maxPlayers) {
+  const ratio = Math.min(1, players / maxPlayers);
+  // Com alguém online a barra nunca fica toda vazia, por menor que seja a proporção.
+  const filled = Math.max(players > 0 ? 1 : 0, Math.round(ratio * BAR_SEGMENTS));
+  return `\`${"█".repeat(filled)}${"░".repeat(BAR_SEGMENTS - filled)}\` **${Math.round(ratio * 100)}%**`;
+}
 
-  const lines = [`${view.emoji} **${view.label}**${since}`];
+/**
+ * O painel de status que o bot mantém atualizado no canal escolhido, e a resposta do /status. O estado e os
+ * jogadores vão em títulos (os "#" do Discord, que deixam o texto grande), com a barra de lotação embaixo; o IP e
+ * a porta em bloco de código, para copiar com um clique. iconUrl: o ícone do servidor do Discord, no canto.
+ */
+export function buildStatusEmbed(cfg, status, iconUrl = null) {
+  const view = describeState(status);
+
+  const lines = [`# ${view.emoji} ${view.label}`];
+  if (status.since) {
+    lines.push(`${view.since} <t:${Math.floor(status.since / 1000)}:R>`);
+  }
   if (status.reason) {
     lines.push(`> ${status.reason}`);
   } else if (status.state === ServerState.MAINTENANCE) {
@@ -77,24 +94,26 @@ export function buildStatusEmbed(cfg, status) {
   } else if (status.state === ServerState.UNKNOWN) {
     lines.push("> Não foi possível consultar o servidor agora.");
   }
+  if (view.players) {
+    lines.push(`## 👥 ${view.players}`);
+    if (status.maxPlayers) lines.push(playersBar(status.players, status.maxPlayers));
+  }
 
   const embed = baseEmbed(cfg.communityName)
     .setColor(view.color)
     .setTitle(`📊 Status do ${cfg.communityName}`)
     .setDescription(lines.join("\n"))
+    .setThumbnail(iconUrl)
     .setFooter({ text: `${cfg.communityName} · atualizado` })
     .setTimestamp(status.checkedAt);
 
-  if (view.players) {
-    embed.addFields({ name: "👥 Jogadores", value: `**${view.players}**`, inline: true });
-  }
   if (cfg.serverIp) {
     embed.addFields(
-      { name: "📡 IP", value: `\`${cfg.serverIp}\``, inline: true },
-      { name: "🔌 Porta", value: `\`${cfg.serverPort || "19132"}\``, inline: true },
+      { name: "📡 IP", value: `\`\`\`${cfg.serverIp}\`\`\``, inline: true },
+      { name: "🔌 Porta", value: `\`\`\`${cfg.serverPort || "19132"}\`\`\``, inline: true },
     );
   }
-  // Com um servidor só, a linha de cima já diz tudo.
+  // Com um servidor só, o título já diz tudo.
   if (status.servers.length > 1) {
     embed.addFields({
       name: "🖥️ Servidores",
