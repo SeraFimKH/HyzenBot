@@ -1,7 +1,8 @@
 import { SlashCommandBuilder } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
-import { getOnlinePlayerCount } from "../database/redis.js";
-import { buildServerInfoEmbed, errorEmbed } from "../utils/embeds.js";
+import { currentServerStatus } from "../services/serverStatus.js";
+import { errorEmbed } from "../utils/embeds.js";
+import { buildServerInfoEmbed } from "../utils/statusEmbed.js";
 
 export const data = new SlashCommandBuilder().setName("ip").setDescription("Mostra o IP do servidor e quantos jogadores estão online.");
 
@@ -15,6 +16,7 @@ export async function execute(interaction) {
     });
   }
 
-  const count = await getOnlinePlayerCount();
-  await interaction.reply({ embeds: [buildServerInfoEmbed(cfg, count)] });
+  await interaction.deferReply();
+  const status = await currentServerStatus(interaction.client);
+  await interaction.editReply({ embeds: [buildServerInfoEmbed(cfg, status)] });
 }

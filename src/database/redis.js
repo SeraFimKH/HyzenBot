@@ -43,6 +43,57 @@ export async function getOnlinePlayerCount() {
   }
 }
 
+const SERVER_KEY_PREFIX = "hyzen:server:";
+
+// Mirrors HyzenCore's NetworkStatusManager#beat: every running server keeps a hyzen:server:{server-name} hash
+// (status ONLINE/MAINTENANCE, players, maxPlayers, startedAt) alive with a 30s TTL — a server that stopped or
+// crashed is simply not there anymore. Returns [] when no server is up and null (not []) when Redis couldn't be
+// asked, so the caller can tell "offline" apart from "couldn't ask". Not logged here: this is polled every few
+// seconds, services/serverStatus.js logs once when Redis goes away and once when it's back.
+export async function getServerHeartbeats() {
+  try {
+    if (redis.status === "wait") await redis.connect();
+    const keys = new Set();
+    let cursor = "0";
+    do {
+      const [nextCursor, found] = await redis.scan(cursor, "MATCH", `${SERVER_KEY_PREFIX}*`, "COUNT", 100);
+      cursor = nextCursor;
+      for (const key of found) keys.add(key);
+    } while (cursor !== "0");
+
+    const servers = [];
+    for (const key of [...keys].sort()) {
+      const fields = await redis.hgetall(key);
+      if (!Object.keys(fields).length) continue; // expired between the scan and the read
+      servers.push({
+        name: key.slice(SERVER_KEY_PREFIX.length),
+        status: fields.status,
+        players: Number(fields.players) || 0,
+        maxPlayers: Number(fields.maxPlayers) || 0,
+        startedAt: Number(fields.startedAt) || null,
+      });
+    }
+    return servers;
+  } catch {
+    return null;
+  }
+}
+
+const NETWORK_STATUS_CHANNEL = "hyzen:network-status";
+
+// HyzenCore (NetworkStatusManager) subscribes to this channel and reads hyzen_network_status again on any
+// message — it's what makes a maintenance turned on from Discord kick non-staff players right away instead of
+// within the ~30s each server takes to re-read the row by itself. Same "logged, not thrown" as publishStaffAction:
+// the new status is already saved in Postgres either way.
+export async function publishNetworkStatus(payload) {
+  try {
+    if (redis.status === "wait") await redis.connect();
+    await redis.publish(NETWORK_STATUS_CHANNEL, JSON.stringify(payload));
+  } catch (err) {
+    console.error("[redis] failed to publish network status", err.message);
+  }
+}
+
 const STAFF_ACTIONS_CHANNEL = "hyzen:staff-actions";
 
 // HyzenStaff (Java) subscribes to this same channel (RedisStaffActionListener) so a punishment issued here

@@ -66,6 +66,7 @@ function defaultConfig() {
       muteLog: null,
       warnLog: null,
       winLog: null,
+      status: null,
     },
     ticketCategoryId: null,
     ticketPanelMessageId: null,
@@ -93,6 +94,8 @@ function defaultConfig() {
     announcePingRoleId: null,
     serverIp: null,
     serverPort: null,
+    statusPanelMessageId: null,
+    statusPanelChannelId: null,
   };
 }
 

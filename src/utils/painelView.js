@@ -81,6 +81,16 @@ const CATEGORIES = [
     ],
   },
   {
+    id: "servidor",
+    label: "Servidor do Jogo",
+    emoji: "📊",
+    description: "Status do servidor (online, manutenção, offline) e o painel de status",
+    options: [
+      { label: "Definir Status do Servidor", description: "Automático, online, manutenção ou offline", value: "status_definir", emoji: "🚦" },
+      { label: "Canal do Painel de Status", description: "Onde o bot mantém o status e os jogadores online sempre atualizados", value: "canal_status", emoji: "📊" },
+    ],
+  },
+  {
     id: "moderacao",
     label: "Moderação",
     emoji: "🛡️",

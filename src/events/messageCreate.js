@@ -1,7 +1,8 @@
 import { getGuildConfig } from "../database/guildConfig.js";
 import { getTicket, updateTicket } from "../database/tickets.js";
-import { getOnlinePlayerCount } from "../database/redis.js";
-import { baseEmbed, buildServerInfoEmbed } from "../utils/embeds.js";
+import { currentServerStatus } from "../services/serverStatus.js";
+import { baseEmbed } from "../utils/embeds.js";
+import { buildServerInfoEmbed } from "../utils/statusEmbed.js";
 import { isWithinSupportHours } from "../utils/businessHours.js";
 import { generateTicketAiReply } from "../utils/ticketAi.js";
 import { getText } from "../utils/textDefaults.js";
@@ -76,8 +77,8 @@ async function handleIpDetector(message, cfg) {
   if (Date.now() - lastReply < IP_COOLDOWN_MS) return;
   ipCooldowns.set(message.author.id, Date.now());
 
-  const count = await getOnlinePlayerCount();
-  await message.reply({ embeds: [buildServerInfoEmbed(cfg, count)] });
+  const status = await currentServerStatus(message.client);
+  await message.reply({ embeds: [buildServerInfoEmbed(cfg, status)] });
 }
 
 export const name = "messageCreate";

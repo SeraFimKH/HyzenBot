@@ -14,6 +14,7 @@ export const CHANNEL_LABELS = {
   muteLog: "🔇 Canal de logs de mute",
   warnLog: "⚠️ Canal de logs de advertência",
   winLog: "🏆 Canal de logs de vitória",
+  status: "📊 Canal do painel de status",
 };
 
 export function buildConfigSummaryEmbed(cfg) {
@@ -89,5 +90,6 @@ export function buildConfigSummaryEmbed(cfg) {
       { name: CHANNEL_LABELS.muteLog, value: cfg.channels.muteLog ? `<#${cfg.channels.muteLog}>` : "*(não definido)*", inline: true },
       { name: CHANNEL_LABELS.warnLog, value: cfg.channels.warnLog ? `<#${cfg.channels.warnLog}>` : "*(não definido)*", inline: true },
       { name: CHANNEL_LABELS.winLog, value: cfg.channels.winLog ? `<#${cfg.channels.winLog}>` : "*(não definido)*", inline: true },
+      { name: CHANNEL_LABELS.status, value: cfg.channels.status ? `<#${cfg.channels.status}>` : "*(não definido)*", inline: true },
     );
 }

@@ -11,6 +11,7 @@ import { publishRules } from "../utils/rulesPanel.js";
 import { handleOpenAiKeyModal, handleOpenAiContextModal } from "../interactions/aiConfig.js";
 import { handleOpenTextModal, buildTextListEmbed } from "../interactions/textConfig.js";
 import { TEXT_FIELDS } from "../utils/textDefaults.js";
+import { refreshServerStatus } from "../services/serverStatus.js";
 
 const TEXTO_PAINEL_CHOICES = TEXT_FIELDS.filter((f) => f.group === "painel").map((f) => ({ name: f.label, value: f.key }));
 const TEXTO_MENSAGEM_CHOICES = TEXT_FIELDS.filter((f) => f.group === "mensagem").map((f) => ({ name: f.label, value: f.key }));
@@ -44,6 +45,7 @@ export const data = new SlashCommandBuilder()
             { name: "Logs de Mute", value: "muteLog" },
             { name: "Logs de Advertência", value: "warnLog" },
             { name: "Logs de Vitória", value: "winLog" },
+            { name: "Painel de Status do Servidor", value: "status" },
           ),
       )
       .addChannelOption((opt) =>
@@ -253,6 +255,9 @@ export async function execute(interaction) {
     updateGuildConfig(interaction.guildId, (c) => {
       c.channels[tipo] = canal.id;
     });
+    if (tipo === "status") {
+      refreshServerStatus(interaction.client).catch((err) => console.error("[config] Falha ao publicar o painel de status:", err));
+    }
 
     return interaction.reply({
       embeds: [successEmbed(`${CHANNEL_LABELS[tipo]} definido como ${canal}.`)],

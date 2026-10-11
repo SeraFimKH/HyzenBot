@@ -11,6 +11,7 @@ import * as rulesButtons from "../interactions/rulesButtons.js";
 import * as raffleButtons from "../interactions/raffleButtons.js";
 import * as aiConfig from "../interactions/aiConfig.js";
 import * as textConfig from "../interactions/textConfig.js";
+import * as statusConfig from "../interactions/statusConfig.js";
 import { handleAuthStart, handleAuthCheck } from "../interactions/authButtons.js";
 
 async function replyError(interaction, message) {
@@ -49,6 +50,7 @@ export async function execute(interaction) {
       if (customId.startsWith("rules_decline")) return await rulesButtons.handleDecline(interaction);
       if (customId === "raffle_participar") return await raffleButtons.handleParticipar(interaction);
       if (customId === "painel_ia_on" || customId === "painel_ia_off") return await painelMenu.handleAiToggle(interaction);
+      if (customId.startsWith("painel_status_")) return await statusConfig.handleStatusModeButton(interaction);
       if (customId === "auth:start") return await handleAuthStart(interaction);
       if (customId === "auth:check") return await handleAuthCheck(interaction);
       return;
@@ -69,6 +71,7 @@ export async function execute(interaction) {
       if (interaction.customId === "ai_key_modal") return await aiConfig.handleAiKeyModalSubmit(interaction);
       if (interaction.customId === "ai_context_modal") return await aiConfig.handleAiContextModalSubmit(interaction);
       if (interaction.customId.startsWith("text_edit_modal:")) return await textConfig.handleTextModalSubmit(interaction);
+      if (interaction.customId.startsWith("status_reason_modal:")) return await statusConfig.handleStatusReasonModalSubmit(interaction);
       return;
     }
 

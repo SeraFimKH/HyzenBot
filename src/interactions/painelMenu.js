@@ -20,6 +20,8 @@ import { handleOpenRulesModal } from "./rulesModal.js";
 import { publishRules } from "../utils/rulesPanel.js";
 import { handleOpenAiKeyModal, handleOpenAiContextModal, buildAiToggleView } from "./aiConfig.js";
 import { handleOpenTextModal } from "./textConfig.js";
+import { buildStatusModeView } from "./statusConfig.js";
+import { refreshServerStatus } from "../services/serverStatus.js";
 
 const CHANNEL_TIPO_LABELS = {
   ticket: "🎫 Canal de Ticket",
@@ -36,6 +38,7 @@ const CHANNEL_TIPO_LABELS = {
   muteLog: "🔇 Canal de Logs de Mute",
   warnLog: "⚠️ Canal de Logs de Advertência",
   winLog: "🏆 Canal de Logs de Vitória",
+  status: "📊 Canal do Painel de Status",
 };
 
 const CARGO_TIPO_LABELS = {
@@ -512,6 +515,10 @@ export async function handleMenuSelect(interaction) {
     return handleOpenServerIpModal(interaction);
   }
 
+  if (value === "status_definir") {
+    return interaction.update(await buildStatusModeView(interaction.client));
+  }
+
   if (value.startsWith("texto_")) {
     return handleOpenTextModal(interaction, value.replace("texto_", ""));
   }
@@ -556,6 +563,11 @@ export async function handleChannelSelect(interaction) {
   });
 
   await interaction.update(buildMainPanel(cfg));
+
+  // O painel de status aparece no canal novo já, sem esperar a próxima verificação.
+  if (tipo === "status") {
+    refreshServerStatus(interaction.client).catch((err) => console.error("[painelMenu] Falha ao publicar o painel de status:", err));
+  }
 }
 
 export async function handleRoleSelect(interaction) {

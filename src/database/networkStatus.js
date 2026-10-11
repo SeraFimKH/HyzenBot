@@ -1,0 +1,88 @@
+import { pool } from "./pool.js";
+import { publishNetworkStatus } from "./redis.js";
+
+// Mirrors HyzenCore/migrations/V2__create_hyzen_network_status.sql — one row (id 1) with the status the staff set
+// for the whole network. The game writes the same row with /manutencao; only MAINTENANCE changes anything there
+// (the servers turn away whoever isn't staff), the other modes are about what this bot shows.
+export const StatusMode = {
+  AUTO: "AUTO", // the bot shows what it detects
+  ONLINE: "ONLINE",
+  MAINTENANCE: "MAINTENANCE",
+  OFFLINE: "OFFLINE",
+};
+
+const ROW_ID = 1;
+// Postgres' "undefined_table": the HyzenCore that creates the table hasn't started against this database yet.
+const UNDEFINED_TABLE = "42P01";
+// What this bot writes in the hyzen:network-status message — the game writes its own server name there.
+const DISCORD_ORIGIN = "Discord";
+
+const DEFAULT_STATUS = Object.freeze({ mode: StatusMode.AUTO, reason: null, changedBy: null, changedAt: null });
+
+let lastKnown = DEFAULT_STATUS;
+// Which read failure was already logged ("table" or "query") — this is polled every few seconds, one line is enough.
+let loggedFailure = null;
+
+function mapRow(row) {
+  return {
+    mode: StatusMode[row.mode] || StatusMode.AUTO,
+    reason: row.reason || null,
+    changedBy: row.changed_by || null,
+    changedAt: row.changed_at ? new Date(row.changed_at).getTime() : null,
+  };
+}
+
+export class StatusTableMissingError extends Error {
+  constructor() {
+    super("hyzen_network_status table not found");
+    this.name = "StatusTableMissingError";
+  }
+}
+
+// The last status read or written, without touching the database — for places that can't wait on a query.
+export function getCachedNetworkStatus() {
+  return lastKnown;
+}
+
+// Never throws: on a failed read the last known status stands (AUTO before any read worked).
+export async function getNetworkStatus() {
+  try {
+    const result = await pool.query("SELECT mode, reason, changed_by, changed_at FROM hyzen_network_status WHERE id = $1", [ROW_ID]);
+    lastKnown = result.rows[0] ? mapRow(result.rows[0]) : DEFAULT_STATUS;
+    loggedFailure = null;
+  } catch (err) {
+    const failure = err.code === UNDEFINED_TABLE ? "table" : "query";
+    if (loggedFailure !== failure) {
+      loggedFailure = failure;
+      console.error(
+        failure === "table"
+          ? "[networkStatus] a tabela hyzen_network_status ainda não existe — ela é criada pelo HyzenCore atualizado quando o servidor liga. Até lá o status fica em modo automático."
+          : `[networkStatus] failed to read the network status, keeping ${lastKnown.mode}: ${err.message}`,
+      );
+    }
+  }
+  return lastKnown;
+}
+
+// Throws StatusTableMissingError when the table isn't there yet, and whatever pg throws otherwise. The Redis
+// message is what makes every server apply the change right away (they'd pick it up within ~30s anyway).
+export async function setNetworkStatus(mode, reason, changedBy) {
+  let result;
+  try {
+    result = await pool.query(
+      `INSERT INTO hyzen_network_status (id, mode, reason, changed_by, changed_at)
+       VALUES ($1, $2, $3, $4, now())
+       ON CONFLICT (id) DO UPDATE SET mode = EXCLUDED.mode, reason = EXCLUDED.reason,
+         changed_by = EXCLUDED.changed_by, changed_at = EXCLUDED.changed_at
+       RETURNING mode, reason, changed_by, changed_at`,
+      [ROW_ID, mode, reason, changedBy],
+    );
+  } catch (err) {
+    if (err.code === UNDEFINED_TABLE) throw new StatusTableMissingError();
+    throw err;
+  }
+
+  lastKnown = mapRow(result.rows[0]);
+  await publishNetworkStatus({ mode, server: DISCORD_ORIGIN });
+  return lastKnown;
+}
