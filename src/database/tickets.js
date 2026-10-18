@@ -12,6 +12,8 @@ export function createTicket(channelId, ticket) {
     openerId: ticket.openerId,
     type: ticket.type || null,
     number: ticket.number,
+    reason: ticket.reason || null,
+    description: ticket.description || null,
     claimedBy: null,
     voiceChannelId: null,
     createdAt: Date.now(),

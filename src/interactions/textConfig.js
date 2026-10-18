@@ -4,6 +4,8 @@ import { isAdmin } from "../utils/permissions.js";
 import { baseEmbed, errorEmbed, successEmbed } from "../utils/embeds.js";
 import { buildMainPanel } from "../utils/painelView.js";
 import { TEXT_FIELDS, getText } from "../utils/textDefaults.js";
+import { refreshTicketPanel } from "../utils/ticketPanel.js";
+import { moveSuggestionPanel } from "../services/suggestionPanel.js";
 
 const FIELD_BY_KEY = Object.fromEntries(TEXT_FIELDS.map((f) => [f.key, f]));
 
@@ -52,6 +54,15 @@ export async function handleTextModalSubmit(interaction) {
       delete c.texts[key];
     }
   });
+
+  // Os painéis já publicados mostram o texto novo na hora.
+  if (key.startsWith("ticket_")) {
+    refreshTicketPanel(interaction.guild).catch((err) => console.error("[textConfig] Falha ao atualizar o painel de tickets:", err.message));
+  } else if (key.startsWith("sugestao_")) {
+    moveSuggestionPanel(interaction.client, interaction.guildId, { force: true }).catch((err) =>
+      console.error("[textConfig] Falha ao atualizar o painel de sugestões:", err.message),
+    );
+  }
 
   if (interaction.isFromMessage()) {
     return interaction.update(buildMainPanel(updated));

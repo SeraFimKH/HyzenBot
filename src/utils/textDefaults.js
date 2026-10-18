@@ -2,7 +2,8 @@ export const TEXT_FIELDS = [
   // Títulos
   { key: "ticket_panel_titulo", label: "Título do painel de ticket", group: "painel", style: "Short", maxLength: 100 },
   { key: "ticket_panel_desc", label: "Descrição do painel de ticket", group: "painel", style: "Paragraph", maxLength: 500 },
-  { key: "ticket_abrir_botao", label: 'Texto do botão "Abrir Ticket"', group: "painel", style: "Short", maxLength: 80 },
+  { key: "ticket_abrir_botao", label: 'Texto do botão "Abrir Ticket" (sem tipos)', group: "painel", style: "Short", maxLength: 80 },
+  { key: "ticket_select_placeholder", label: "Texto do menu de tipos de ticket", group: "painel", style: "Short", maxLength: 100 },
   { key: "sorteio_titulo", label: "Título do painel de sorteio", group: "painel", style: "Short", maxLength: 100 },
   { key: "sorteio_participar_botao", label: 'Texto do botão "Participar"', group: "painel", style: "Short", maxLength: 80 },
   { key: "regras_titulo", label: "Título das diretrizes", group: "painel", style: "Short", maxLength: 100 },
@@ -32,8 +33,9 @@ export const TEXT_FIELDS = [
 export const DEFAULT_TEXTS = {
   ticket_panel_titulo: "🎫 Central de Atendimento",
   ticket_panel_desc:
-    "Precisa de ajuda ou tem alguma dúvida? Clique no botão abaixo para abrir um ticket e nossa equipe irá te atender!",
+    "Precisa de ajuda ou tem alguma dúvida? Escolha abaixo o tipo de atendimento, conte o motivo e a nossa equipe te atende num canal privado!",
   ticket_abrir_botao: "Abrir Ticket",
+  ticket_select_placeholder: "🎫 Escolha o tipo de atendimento...",
   sorteio_titulo: "🎉 Sorteio {comunidade}",
   sorteio_participar_botao: "🎟️ Participar",
   regras_titulo: "📜 Diretrizes da Comunidade",

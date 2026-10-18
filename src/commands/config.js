@@ -3,7 +3,7 @@ import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { isAdmin } from "../utils/permissions.js";
 import { errorEmbed, successEmbed } from "../utils/embeds.js";
 import { buildConfigSummaryEmbed, CHANNEL_LABELS } from "../utils/configEmbed.js";
-import { publishTicketPanel } from "../utils/ticketPanel.js";
+import { publishTicketPanel, refreshTicketPanel } from "../utils/ticketPanel.js";
 import { addTicketType, removeTicketTypes } from "../utils/ticketTypes.js";
 import { handleOpenMpTokenModal } from "../interactions/pixButtons.js";
 import { handleOpenRulesModal } from "../interactions/rulesModal.js";
@@ -315,7 +315,7 @@ export async function execute(interaction) {
       return interaction.reply({ embeds: [errorEmbed(result.reason)], ephemeral: true });
     }
     return interaction.reply({
-      embeds: [successEmbed(`Painel de tickets publicado em ${result.channel}.`)],
+      embeds: [successEmbed(`Painel de tickets ${result.updated ? "atualizado" : "publicado"} em ${result.channel}.`)],
       ephemeral: true,
     });
   }
@@ -343,6 +343,7 @@ export async function execute(interaction) {
       if (!result.ok) {
         return interaction.reply({ embeds: [errorEmbed(result.reason)], ephemeral: true });
       }
+      refreshTicketPanel(interaction.guild).catch((err) => console.error("[config] Falha ao atualizar o painel de tickets:", err.message));
       return interaction.reply({ embeds: [successEmbed(`Tipo de suporte **${emoji ? `${emoji} ` : ""}${nome}** adicionado.`)], ephemeral: true });
     }
 
@@ -357,6 +358,7 @@ export async function execute(interaction) {
       if (!removedCount) {
         return interaction.reply({ embeds: [errorEmbed(`Nenhum tipo de suporte chamado **${nome}** foi encontrado.`)], ephemeral: true });
       }
+      refreshTicketPanel(interaction.guild).catch((err) => console.error("[config] Falha ao atualizar o painel de tickets:", err.message));
       return interaction.reply({ embeds: [successEmbed(`Tipo de suporte **${nome}** removido.`)], ephemeral: true });
     }
   }

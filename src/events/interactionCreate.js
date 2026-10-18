@@ -78,6 +78,7 @@ export async function execute(interaction) {
       if (interaction.customId === "ai_context_modal") return await aiConfig.handleAiContextModalSubmit(interaction);
       if (interaction.customId.startsWith("text_edit_modal:")) return await textConfig.handleTextModalSubmit(interaction);
       if (interaction.customId.startsWith("status_reason_modal:")) return await statusConfig.handleStatusReasonModalSubmit(interaction);
+      if (interaction.customId.startsWith("ticket_modal:")) return await ticketButtons.handleTicketModalSubmit(interaction);
       if (interaction.customId === SUGGESTION_MODAL_ID) return await suggestionButtons.handleSuggestionModalSubmit(interaction);
       if (interaction.customId.startsWith(REASON_MODAL_PREFIX)) return await suggestionButtons.handleReasonModalSubmit(interaction);
       if (interaction.customId === suggestionConfig.CONFIG_MODAL_ID) return await suggestionConfig.handleSuggestionConfigModalSubmit(interaction);
@@ -87,7 +88,8 @@ export async function execute(interaction) {
     if (interaction.isStringSelectMenu()) {
       if (interaction.customId === "painel_categoria") return await painelMenu.handleCategorySelect(interaction);
       if (interaction.customId === "painel_menu") return await painelMenu.handleMenuSelect(interaction);
-      if (interaction.customId === "ticket_type_select") return await ticketButtons.handleTypeSelected(interaction);
+      // ticket_type_select: o menu antigo, que aparecia só para quem clicava no botão.
+      if (interaction.customId === "ticket_open_select" || interaction.customId === "ticket_type_select") return await ticketButtons.handleTypeSelected(interaction);
       if (interaction.customId === "painel_tipoticket_remover") return await painelMenu.handleTipoTicketRemoveSelect(interaction);
       return;
     }

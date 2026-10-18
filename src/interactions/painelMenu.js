@@ -13,7 +13,7 @@ import {
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { baseEmbed } from "../utils/embeds.js";
 import { buildMainPanel, findCategory } from "../utils/painelView.js";
-import { publishTicketPanel } from "../utils/ticketPanel.js";
+import { publishTicketPanel, refreshTicketPanel } from "../utils/ticketPanel.js";
 import { addTicketType, removeTicketTypes, MAX_TYPES } from "../utils/ticketTypes.js";
 import { handleOpenMpTokenModal } from "./pixButtons.js";
 import { handleOpenRulesModal } from "./rulesModal.js";
@@ -546,7 +546,7 @@ export async function handleMenuSelect(interaction) {
   if (value === "publicar_painel") {
     const result = await publishTicketPanel(interaction.guild, cfg);
     const embed = result.ok
-      ? baseEmbed().setDescription(`✅ Painel de tickets publicado em ${result.channel}.`)
+      ? baseEmbed().setDescription(`✅ Painel de tickets ${result.updated ? "atualizado" : "publicado"} em ${result.channel}.`)
       : baseEmbed().setColor(0xed4245).setDescription(`❌ ${result.reason}`);
 
     return interaction.update({ embeds: [embed], components: [backRow()] });
@@ -626,6 +626,7 @@ export async function handleTipoTicketRemoveSelect(interaction) {
     if (labels.length) removeTicketTypes(c, labels);
   });
   await interaction.update(buildTipoTicketView(cfg));
+  refreshTicketPanel(interaction.guild).catch((err) => console.error("[painelMenu] Falha ao atualizar o painel de tickets:", err.message));
 }
 
 export async function handleTipoTicketAddButton(interaction) {
@@ -671,4 +672,5 @@ export async function handleTipoTicketAddModal(interaction) {
   }
 
   await interaction.update(buildTipoTicketView(cfg));
+  refreshTicketPanel(interaction.guild).catch((err) => console.error("[painelMenu] Falha ao atualizar o painel de tickets:", err.message));
 }

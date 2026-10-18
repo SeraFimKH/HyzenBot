@@ -6,6 +6,7 @@ import {
   ButtonStyle,
   StringSelectMenuBuilder,
   EmbedBuilder,
+  MessageFlags,
 } from "discord.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { getTicket, createTicket, updateTicket, deleteTicket, findOpenTicketByUser } from "../database/tickets.js";
@@ -13,7 +14,7 @@ import { isStaff } from "../utils/permissions.js";
 import { baseEmbed, errorEmbed, successEmbed } from "../utils/embeds.js";
 import { buildTranscriptAttachment } from "../utils/ticketTranscript.js";
 import { formatDuration } from "../utils/format.js";
-import { TICKET_HOURS_NOTE } from "../utils/ticketPanel.js";
+import { buildTicketModal, buildTicketOpenRow, TICKET_HOURS_NOTE, TICKET_MODAL_PREFIX, TICKET_TYPE_SELECT_ID } from "../utils/ticketPanel.js";
 import { isWithinSupportHours } from "../utils/businessHours.js";
 import { getText } from "../utils/textDefaults.js";
 
@@ -46,6 +47,21 @@ function ticketControlsRow({ claimed, closing, hasVoice }) {
   );
 }
 
+const truncate = (text, max) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+
+// Os campos do embed de abertura do ticket — os mesmos ao abrir e ao ser assumido, para o motivo e a descrição
+// nunca sumirem da mensagem.
+function ticketInfoFields(ticket, statusValue) {
+  const fields = [
+    { name: "👤 Aberto por", value: `<@${ticket.openerId}>`, inline: true },
+    { name: "🗂️ Tipo de suporte", value: ticket.type || "*(não informado)*", inline: true },
+    { name: "📌 Status", value: statusValue, inline: true },
+  ];
+  if (ticket.reason) fields.push({ name: "📝 Motivo", value: truncate(ticket.reason, 1024) });
+  if (ticket.description) fields.push({ name: "🗒️ Descrição", value: truncate(ticket.description, 1024) });
+  return fields;
+}
+
 function getStaffAndAdminRoleIds(cfg) {
   return [...new Set([...cfg.adminRoles, ...cfg.staffRoles])];
 }
@@ -76,7 +92,7 @@ async function replyOrEdit(interaction, embed) {
   return interaction.reply({ ...payload, ephemeral: true });
 }
 
-async function createTicketChannel(interaction, cfg, ticketType) {
+async function createTicketChannel(interaction, cfg, ticketType, { reason, description }) {
   const category = await interaction.guild.channels.fetch(cfg.ticketCategoryId).catch(() => null);
   if (!category) {
     return replyOrEdit(interaction, errorEmbed("A categoria de tickets configurada não foi encontrada. Peça a um administrador para configurá-la novamente."));
@@ -96,10 +112,13 @@ async function createTicketChannel(interaction, cfg, ticketType) {
     name: `ticket-${String(number).padStart(4, "0")}${typeSlug}-${safeName}`,
     type: ChannelType.GuildText,
     parent: category.id,
+    // O motivo no topo do canal: a equipe vê do que se trata sem rolar até a primeira mensagem.
+    topic: truncate(`${ticketType ? `${ticketType.label} · ` : ""}${reason}`, 1024),
     permissionOverwrites,
   });
 
-  createTicket(channel.id, { guildId: interaction.guildId, openerId: interaction.user.id, type: ticketType?.label || null, number });
+  const typeText = ticketType ? `${ticketType.emoji ? `${ticketType.emoji} ` : ""}${ticketType.label}` : null;
+  createTicket(channel.id, { guildId: interaction.guildId, openerId: interaction.user.id, type: typeText, number, reason, description });
 
   const withinHours = isWithinSupportHours();
 
@@ -110,9 +129,10 @@ async function createTicketChannel(interaction, cfg, ticketType) {
     .setThumbnail(interaction.user.displayAvatarURL())
     .setDescription(`Olá <@${interaction.user.id}>! Obrigado por abrir um ticket.\n\n${statusLine}\n\n${TICKET_HOURS_NOTE}`)
     .addFields(
-      { name: "👤 Aberto por", value: `<@${interaction.user.id}>`, inline: true },
-      { name: "🗂️ Tipo de suporte", value: ticketType ? `${ticketType.emoji ? `${ticketType.emoji} ` : ""}${ticketType.label}` : "*(não informado)*", inline: true },
-      { name: "📌 Status", value: withinHours ? "🟡 Aguardando atendimento" : "🌙 Fora do horário de atendimento", inline: true },
+      ticketInfoFields(
+        { openerId: interaction.user.id, type: typeText, reason, description },
+        withinHours ? "🟡 Aguardando atendimento" : "🌙 Fora do horário de atendimento",
+      ),
     );
 
   const pingContent = withinHours
@@ -129,61 +149,68 @@ async function createTicketChannel(interaction, cfg, ticketType) {
   setTimeout(() => interaction.deleteReply().catch(() => {}), 8000);
 }
 
-export async function handleOpen(interaction) {
-  const cfg = getGuildConfig(interaction.guildId);
-
+// Antes do formulário: o sistema está configurado e a pessoa ainda não tem ticket aberto? Devolve o erro, ou null.
+function checkCanOpen(interaction, cfg) {
   if (!cfg.ticketCategoryId) {
-    return interaction.reply({
-      embeds: [errorEmbed("O sistema de tickets ainda não foi configurado. Peça a um administrador para rodar `/config categoria-ticket`.")],
-      ephemeral: true,
-    });
+    return "O sistema de tickets ainda não foi configurado. Peça a um administrador para rodar `/config categoria-ticket`.";
   }
-
   const existing = findOpenTicketByUser(interaction.guildId, interaction.user.id);
   if (existing) {
-    return interaction.reply({
-      embeds: [errorEmbed(`Você já tem um ticket aberto em <#${existing.channelId}>.`)],
-      ephemeral: true,
-    });
+    return `Você já tem um ticket aberto em <#${existing.channelId}>.`;
   }
-
-  if (!cfg.ticketTypes.length) {
-    await interaction.deferReply({ ephemeral: true });
-    return createTicketChannel(interaction, cfg, null);
-  }
-
-  const menu = new StringSelectMenuBuilder()
-    .setCustomId("ticket_type_select")
-    .setPlaceholder("Selecione o tipo de suporte...")
-    .addOptions(cfg.ticketTypes.map((t) => ({ label: t.label, value: t.label, emoji: t.emoji || undefined })));
-
-  await interaction.reply({
-    embeds: [
-      baseEmbed(cfg.communityName)
-        .setTitle(getText(cfg, "ticket_panel_titulo"))
-        .setDescription(
-          `Selecione abaixo o tipo de suporte que você precisa. Em seguida, criaremos um canal privado só para você e nossa equipe.\n\n${TICKET_HOURS_NOTE}`,
-        ),
-    ],
-    components: [new ActionRowBuilder().addComponents(menu)],
-    ephemeral: true,
-  });
+  return null;
 }
 
-export async function handleTypeSelected(interaction) {
+// O botão "Abrir Ticket" (painel de um servidor sem tipos de suporte): direto para o formulário.
+export async function handleOpen(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
-
-  const existing = findOpenTicketByUser(interaction.guildId, interaction.user.id);
-  if (existing) {
-    await interaction.deferUpdate();
-    return replyOrEdit(interaction, errorEmbed(`Você já tem um ticket aberto em <#${existing.channelId}>.`));
+  const refusal = checkCanOpen(interaction, cfg);
+  if (refusal) {
+    return interaction.reply({ embeds: [errorEmbed(refusal)], ephemeral: true });
   }
 
-  const label = interaction.values[0];
-  const ticketType = cfg.ticketTypes.find((t) => t.label === label) || { label, emoji: null };
+  // Um painel antigo, de antes do menu, com tipos configurados: o menu aparece só para quem clicou.
+  if (cfg.ticketTypes.length) {
+    return interaction.reply({ components: [buildTicketOpenRow(cfg)], ephemeral: true });
+  }
 
-  await interaction.deferUpdate();
-  await createTicketChannel(interaction, cfg, ticketType);
+  await interaction.showModal(buildTicketModal(null));
+}
+
+// O tipo escolhido no menu do painel: abre o formulário de motivo e descrição.
+export async function handleTypeSelected(interaction) {
+  const cfg = getGuildConfig(interaction.guildId);
+  const refusal = checkCanOpen(interaction, cfg);
+  if (refusal) {
+    await interaction.reply({ embeds: [errorEmbed(refusal)], ephemeral: true });
+  } else {
+    const label = interaction.values[0];
+    const ticketType = cfg.ticketTypes.find((t) => t.label === label) || { label, emoji: null };
+    await interaction.showModal(buildTicketModal(ticketType));
+  }
+
+  // O Discord deixa o tipo escolhido marcado no menu, e escolher o mesmo de novo (depois de fechar o formulário,
+  // por exemplo) não faria nada. Reenviar o menu do painel limpa a escolha.
+  if (interaction.customId === TICKET_TYPE_SELECT_ID && !interaction.message.flags?.has(MessageFlags.Ephemeral)) {
+    await interaction.message.edit({ components: [buildTicketOpenRow(cfg)] }).catch(() => {});
+  }
+}
+
+// O formulário enviado: o ticket nasce com o tipo, o motivo e a descrição.
+export async function handleTicketModalSubmit(interaction) {
+  const cfg = getGuildConfig(interaction.guildId);
+  const refusal = checkCanOpen(interaction, cfg);
+  if (refusal) {
+    return interaction.reply({ embeds: [errorEmbed(refusal)], ephemeral: true });
+  }
+
+  const label = interaction.customId.slice(TICKET_MODAL_PREFIX.length);
+  const ticketType = label ? cfg.ticketTypes.find((t) => t.label === label) || { label, emoji: null } : null;
+  const reason = interaction.fields.getTextInputValue("motivo").trim();
+  const description = interaction.fields.getTextInputValue("descricao").trim();
+
+  await interaction.deferReply({ ephemeral: true });
+  await createTicketChannel(interaction, cfg, ticketType, { reason, description });
 }
 
 export async function handleClaim(interaction) {
@@ -208,11 +235,8 @@ export async function handleClaim(interaction) {
 
   const embed = EmbedBuilder.from(interaction.message.embeds[0])
     .setDescription(`Este ticket foi assumido por <@${interaction.user.id}>. Ele(a) vai te ajudar a partir de agora!`)
-    .setFields(
-      { name: "👤 Aberto por", value: `<@${ticket.openerId}>`, inline: true },
-      { name: "🗂️ Tipo de suporte", value: ticket.type ? ticket.type : "*(não informado)*", inline: true },
-      { name: "📌 Status", value: `🟢 Em atendimento por <@${interaction.user.id}>`, inline: true },
-    );
+    .setFields(ticketInfoFields(ticket, `🟢 Em atendimento por <@${interaction.user.id}>`));
+  if (ticket.voiceChannelId) embed.addFields({ name: "🔊 Canal de voz", value: `<#${ticket.voiceChannelId}>` });
 
   await interaction.update({
     embeds: [embed],
@@ -323,6 +347,7 @@ async function sendTicketTranscript(interaction, cfg, ticket) {
       { name: "🙋 Assumido por", value: ticket.claimedBy ? `<@${ticket.claimedBy}>` : "*(ninguém assumiu)*", inline: true },
       { name: "🔒 Fechado por", value: `<@${interaction.user.id}>`, inline: true },
     );
+  if (ticket.reason) summary.addFields({ name: "📝 Motivo", value: truncate(ticket.reason, 1024) });
 
   const feedbackRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()

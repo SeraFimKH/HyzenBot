@@ -22,7 +22,10 @@ export async function generateTicketAiReply(message, ticket, cfg) {
   if (!apiKey) return null;
 
   const systemPrompt = cfg.aiSystemPrompt || defaultSystemPrompt(cfg.communityName);
-  const contextLine = ticket.type ? `\n\nTipo de suporte selecionado pelo membro: ${ticket.type}.` : "";
+  const contextLine =
+    (ticket.type ? `\n\nTipo de suporte selecionado pelo membro: ${ticket.type}.` : "") +
+    (ticket.reason ? `\nMotivo informado ao abrir o ticket: ${ticket.reason}` : "") +
+    (ticket.description ? `\nDescrição informada ao abrir o ticket: ${ticket.description}` : "");
 
   try {
     return await generateReply({
