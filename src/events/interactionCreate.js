@@ -12,6 +12,9 @@ import * as raffleButtons from "../interactions/raffleButtons.js";
 import * as aiConfig from "../interactions/aiConfig.js";
 import * as textConfig from "../interactions/textConfig.js";
 import * as statusConfig from "../interactions/statusConfig.js";
+import * as suggestionButtons from "../interactions/suggestionButtons.js";
+import * as suggestionConfig from "../interactions/suggestionConfig.js";
+import { PANEL_BUTTON_ID as SUGGESTION_BUTTON_ID, SUGGESTION_MODAL_ID } from "../utils/suggestionViews.js";
 import { handleAuthStart, handleAuthCheck } from "../interactions/authButtons.js";
 
 async function replyError(interaction, message) {
@@ -52,6 +55,7 @@ export async function execute(interaction) {
       if (customId === "painel_ia_on" || customId === "painel_ia_off") return await painelMenu.handleAiToggle(interaction);
       if (customId.startsWith("painel_status_")) return await statusConfig.handleStatusModeButton(interaction);
       if (customId === statusConfig.PIN_BUTTON_ID) return await statusConfig.handleStatusPin(interaction);
+      if (customId === SUGGESTION_BUTTON_ID) return await suggestionButtons.handleOpenSuggestion(interaction);
       if (customId === "auth:start") return await handleAuthStart(interaction);
       if (customId === "auth:check") return await handleAuthCheck(interaction);
       return;
@@ -73,6 +77,8 @@ export async function execute(interaction) {
       if (interaction.customId === "ai_context_modal") return await aiConfig.handleAiContextModalSubmit(interaction);
       if (interaction.customId.startsWith("text_edit_modal:")) return await textConfig.handleTextModalSubmit(interaction);
       if (interaction.customId.startsWith("status_reason_modal:")) return await statusConfig.handleStatusReasonModalSubmit(interaction);
+      if (interaction.customId === SUGGESTION_MODAL_ID) return await suggestionButtons.handleSuggestionModalSubmit(interaction);
+      if (interaction.customId === suggestionConfig.CONFIG_MODAL_ID) return await suggestionConfig.handleSuggestionConfigModalSubmit(interaction);
       return;
     }
 

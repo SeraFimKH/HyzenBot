@@ -12,6 +12,7 @@ import { handleOpenAiKeyModal, handleOpenAiContextModal } from "../interactions/
 import { handleOpenTextModal, buildTextListEmbed } from "../interactions/textConfig.js";
 import { TEXT_FIELDS } from "../utils/textDefaults.js";
 import { refreshServerStatus } from "../services/serverStatus.js";
+import { publishSuggestionPanel } from "../interactions/suggestionConfig.js";
 
 const TEXTO_PAINEL_CHOICES = TEXT_FIELDS.filter((f) => f.group === "painel").map((f) => ({ name: f.label, value: f.key }));
 const TEXTO_MENSAGEM_CHOICES = TEXT_FIELDS.filter((f) => f.group === "mensagem").map((f) => ({ name: f.label, value: f.key }));
@@ -46,6 +47,7 @@ export const data = new SlashCommandBuilder()
             { name: "Logs de Advertência", value: "warnLog" },
             { name: "Logs de Vitória", value: "winLog" },
             { name: "Painel de Status do Servidor", value: "status" },
+            { name: "Sugestões", value: "sugestoes" },
           ),
       )
       .addChannelOption((opt) =>
@@ -257,6 +259,12 @@ export async function execute(interaction) {
     });
     if (tipo === "status") {
       refreshServerStatus(interaction.client).catch((err) => console.error("[config] Falha ao publicar o painel de status:", err));
+    }
+    if (tipo === "sugestoes") {
+      // Publicar o painel pode passar dos 3 segundos que o Discord dá para responder.
+      await interaction.deferReply({ ephemeral: true });
+      const embed = await publishSuggestionPanel(interaction.client, interaction.guildId);
+      return interaction.editReply({ embeds: [successEmbed(`${CHANNEL_LABELS[tipo]} definido como ${canal}.`), embed] });
     }
 
     return interaction.reply({

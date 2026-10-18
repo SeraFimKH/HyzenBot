@@ -1,6 +1,7 @@
 import { startRaffleScheduler, startPixScheduler } from "../utils/scheduler.js";
 import { cacheGuildInvites } from "../utils/inviteTracker.js";
 import { startServerStatus } from "../services/serverStatus.js";
+import { ensureSuggestionPanels } from "../services/suggestionPanel.js";
 
 export const name = "clientReady";
 export const once = true;
@@ -14,4 +15,6 @@ export async function execute(client) {
     await cacheGuildInvites(guild);
   }
   console.log(`[ready] Cache de convites carregado para ${client.guilds.cache.size} servidor(es).`);
+
+  await ensureSuggestionPanels(client);
 }

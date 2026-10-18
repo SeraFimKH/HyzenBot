@@ -1,4 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, PermissionsBitField, TextInputBuilder, TextInputStyle } from "discord.js";
+import { formatPermissionList, missingPermissions } from "../utils/channelPermissions.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { getCachedNetworkStatus, StatusMode, StatusTableMissingError } from "../database/networkStatus.js";
 import { currentServerStatus, pinStatusPanel, setStatusMode } from "../services/serverStatus.js";
@@ -18,12 +19,8 @@ const MODAL_PREFIX = "status_reason_modal:";
 export const PIN_BUTTON_ID = "status_pin";
 
 // O que o bot precisa no canal para manter o painel: achar a mensagem de novo e editá-la.
-const PANEL_PERMISSIONS = [
-  [PermissionsBitField.Flags.ViewChannel, "Ver canal"],
-  [PermissionsBitField.Flags.SendMessages, "Enviar mensagens"],
-  [PermissionsBitField.Flags.EmbedLinks, "Inserir links"],
-  [PermissionsBitField.Flags.ReadMessageHistory, "Ver histórico de mensagens"],
-];
+const { Flags } = PermissionsBitField;
+const PANEL_PERMISSIONS = [Flags.ViewChannel, Flags.SendMessages, Flags.EmbedLinks, Flags.ReadMessageHistory];
 
 /**
  * Grava o modo escolhido (o banco + o aviso que faz os servidores aplicarem na hora) e atualiza a presença e o
@@ -118,12 +115,10 @@ export async function handleStatusPin(interaction) {
   }
 
   // O /status responde até em canal que o bot não enxerga; editar a mensagem depois, não.
-  const me = interaction.guild.members.me;
-  const granted = me ? interaction.channel?.permissionsFor(me) : null;
-  const missing = granted ? PANEL_PERMISSIONS.filter(([flag]) => !granted.has(flag)).map(([, name]) => name) : [];
+  const missing = missingPermissions(interaction.channel, interaction.guild.members.me, PANEL_PERMISSIONS);
   if (missing.length) {
     return interaction.reply({
-      embeds: [errorEmbed(`Para manter o painel aqui o bot precisa destas permissões neste canal: **${missing.join("**, **")}**.`)],
+      embeds: [errorEmbed(`Para manter o painel aqui o bot precisa destas permissões neste canal: ${formatPermissionList(missing)}.`)],
       ephemeral: true,
     });
   }

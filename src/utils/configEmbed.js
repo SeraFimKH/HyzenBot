@@ -15,7 +15,10 @@ export const CHANNEL_LABELS = {
   warnLog: "⚠️ Canal de logs de advertência",
   winLog: "🏆 Canal de logs de vitória",
   status: "📊 Canal do painel de status",
+  sugestoes: "💡 Canal de sugestões",
 };
+
+const channelOrNone = (id) => (id ? `<#${id}>` : "*(não definido)*");
 
 export function buildConfigSummaryEmbed(cfg) {
   return baseEmbed(cfg.communityName)
@@ -86,10 +89,17 @@ export function buildConfigSummaryEmbed(cfg) {
         value: cfg.aiEnabled ? "🟢 Ativada" : cfg.aiApiKey ? "⚪ Desativada (chave configurada)" : "⚪ Desativada (sem chave)",
         inline: true,
       },
-      { name: CHANNEL_LABELS.banLog, value: cfg.channels.banLog ? `<#${cfg.channels.banLog}>` : "*(não definido)*", inline: true },
-      { name: CHANNEL_LABELS.muteLog, value: cfg.channels.muteLog ? `<#${cfg.channels.muteLog}>` : "*(não definido)*", inline: true },
-      { name: CHANNEL_LABELS.warnLog, value: cfg.channels.warnLog ? `<#${cfg.channels.warnLog}>` : "*(não definido)*", inline: true },
-      { name: CHANNEL_LABELS.winLog, value: cfg.channels.winLog ? `<#${cfg.channels.winLog}>` : "*(não definido)*", inline: true },
-      { name: CHANNEL_LABELS.status, value: cfg.channels.status ? `<#${cfg.channels.status}>` : "*(não definido)*", inline: true },
+      {
+        name: "📋 Canais de log da moderação",
+        value: ["banLog", "muteLog", "warnLog", "winLog"].map((key) => `${CHANNEL_LABELS[key]}: ${channelOrNone(cfg.channels[key])}`).join("\n"),
+      },
+      { name: CHANNEL_LABELS.status, value: channelOrNone(cfg.channels.status), inline: true },
+      {
+        name: CHANNEL_LABELS.sugestoes,
+        value: cfg.channels.sugestoes
+          ? `<#${cfg.channels.sugestoes}> · votação de ${cfg.suggestionPollDays} dia(s), ${cfg.suggestionCooldownMinutes} min entre sugestões`
+          : "*(não definido)*",
+        inline: true,
+      },
     );
 }

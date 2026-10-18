@@ -22,6 +22,7 @@ import { handleOpenAiKeyModal, handleOpenAiContextModal, buildAiToggleView } fro
 import { handleOpenTextModal } from "./textConfig.js";
 import { buildStatusModeView } from "./statusConfig.js";
 import { refreshServerStatus } from "../services/serverStatus.js";
+import { handleOpenSuggestionConfigModal, publishSuggestionPanel } from "./suggestionConfig.js";
 
 const CHANNEL_TIPO_LABELS = {
   ticket: "🎫 Canal de Ticket",
@@ -39,6 +40,7 @@ const CHANNEL_TIPO_LABELS = {
   warnLog: "⚠️ Canal de Logs de Advertência",
   winLog: "🏆 Canal de Logs de Vitória",
   status: "📊 Canal do Painel de Status",
+  sugestoes: "💡 Canal de Sugestões",
 };
 
 const CARGO_TIPO_LABELS = {
@@ -519,6 +521,16 @@ export async function handleMenuSelect(interaction) {
     return interaction.update(await buildStatusModeView(interaction.client));
   }
 
+  if (value === "sugestao_config") {
+    return handleOpenSuggestionConfigModal(interaction);
+  }
+
+  if (value === "publicar_sugestoes") {
+    await interaction.deferUpdate();
+    const embed = await publishSuggestionPanel(interaction.client, interaction.guildId);
+    return interaction.editReply({ embeds: [embed], components: [backRow()] });
+  }
+
   if (value.startsWith("texto_")) {
     return handleOpenTextModal(interaction, value.replace("texto_", ""));
   }
@@ -563,6 +575,12 @@ export async function handleChannelSelect(interaction) {
   });
 
   await interaction.update(buildMainPanel(cfg));
+
+  // O painel de sugestões vai para o canal novo na hora — e a staff vê se faltou alguma permissão.
+  if (tipo === "sugestoes") {
+    const embed = await publishSuggestionPanel(interaction.client, interaction.guildId);
+    await interaction.followUp({ embeds: [embed], ephemeral: true }).catch(() => {});
+  }
 
   // O painel de status aparece no canal novo já, sem esperar a próxima verificação.
   if (tipo === "status") {

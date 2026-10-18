@@ -3,6 +3,7 @@ import { getTicket, updateTicket } from "../database/tickets.js";
 import { currentServerStatus } from "../services/serverStatus.js";
 import { baseEmbed } from "../utils/embeds.js";
 import { buildServerInfoEmbed } from "../utils/statusEmbed.js";
+import { watchSuggestionChannel } from "../services/suggestionPanel.js";
 import { isWithinSupportHours } from "../utils/businessHours.js";
 import { generateTicketAiReply } from "../utils/ticketAi.js";
 import { getText } from "../utils/textDefaults.js";
@@ -83,6 +84,10 @@ async function handleIpDetector(message, cfg) {
 
 export const name = "messageCreate";
 export async function execute(message) {
+  // Antes do filtro de bots: as sugestões e o resultado das enquetes também são mensagens do bot, e todas elas
+  // empurram o painel de sugestões para cima.
+  if (message.guild) watchSuggestionChannel(message);
+
   if (message.author.bot || !message.guild) return;
 
   try {

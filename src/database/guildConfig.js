@@ -67,6 +67,7 @@ function defaultConfig() {
       warnLog: null,
       winLog: null,
       status: null,
+      sugestoes: null,
     },
     ticketCategoryId: null,
     ticketPanelMessageId: null,
@@ -96,6 +97,10 @@ function defaultConfig() {
     serverPort: null,
     statusPanelMessageId: null,
     statusPanelChannelId: null,
+    suggestionPanelMessageId: null,
+    suggestionPanelChannelId: null,
+    suggestionPollDays: 7,
+    suggestionCooldownMinutes: 10,
   };
 }
 

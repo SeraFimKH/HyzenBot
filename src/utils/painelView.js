@@ -65,6 +65,9 @@ const CATEGORIES = [
       { label: "Canal de Changelog", description: "Onde os avisos (/aviso) são publicados", value: "canal_changelog", emoji: "📑" },
       { label: "Canal de Comandos", description: "Onde membros podem usar /participar e /feed", value: "canal_commands", emoji: "💬" },
       { label: "Cargo de Menção em Anúncios", description: "Cargo (ou @everyone) marcado em sorteio, enquete e aviso", value: "cargo_anuncio", emoji: "🔔" },
+      { label: "Canal de Sugestões", description: "Onde as sugestões ficam, com o botão de enviar sempre por último", value: "canal_sugestoes", emoji: "💡" },
+      { label: "Configurar Sugestões", description: "Quantos dias dura a votação e o intervalo entre sugestões", value: "sugestao_config", emoji: "🗳️" },
+      { label: "Publicar Painel de Sugestões", description: "Posta de novo o botão no fim do canal (depois de mudar os textos)", value: "publicar_sugestoes", emoji: "📌" },
     ],
   },
   {
