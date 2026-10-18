@@ -14,7 +14,7 @@ export const SUGGESTION_THREAD_PERMISSIONS = [Flags.CreatePublicThreads, Flags.S
 const SETTLE_MS = 2_500;
 
 const pending = new Map(); // guildId -> timeout of the next move
-const moves = new Map(); // guildId -> the move running now (one at a time, or two panels end up in the channel)
+const queues = new Map(); // guildId -> the last task queued for that server's suggestions channel
 const loggedErrors = new Map(); // guildId -> last error logged, so a channel without permission isn't logged on every message
 
 export function isSuggestionPanel(message) {
@@ -52,20 +52,28 @@ export async function ensureSuggestionPanels(client) {
 }
 
 /**
+ * Runs what posts in a server's suggestions channel one task at a time, in order: two panel moves at once would
+ * leave two panels, and a move between a suggestion's card and its poll would split them apart.
+ */
+export function runInSuggestionChannel(guildId, task) {
+  const previous = queues.get(guildId) || Promise.resolve();
+  const next = previous.catch(() => {}).then(task);
+  queues.set(guildId, next);
+  next
+    .finally(() => {
+      if (queues.get(guildId) === next) queues.delete(guildId);
+    })
+    .catch(() => {});
+  return next;
+}
+
+/**
  * Makes sure the panel is the last message of the suggestions channel. force: posts it again even if it already is
  * (after its texts changed). Resolves to { ok: true, channel, moved } or { ok: false, reason } for things the staff
  * can fix (channel gone, a permission missing); throws on anything else.
  */
 export function moveSuggestionPanel(client, guildId, { force = false } = {}) {
-  const previous = moves.get(guildId) || Promise.resolve();
-  const next = previous.catch(() => {}).then(() => movePanel(client, guildId, force));
-  moves.set(guildId, next);
-  next
-    .finally(() => {
-      if (moves.get(guildId) === next) moves.delete(guildId);
-    })
-    .catch(() => {});
-  return next;
+  return runInSuggestionChannel(guildId, () => movePanel(client, guildId, force));
 }
 
 async function movePanel(client, guildId, force) {

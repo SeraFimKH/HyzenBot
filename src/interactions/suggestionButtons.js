@@ -1,21 +1,25 @@
 import { ThreadAutoArchiveDuration } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
-import { createSuggestion, discardSuggestion, lastSuggestionAt, updateSuggestion } from "../database/suggestions.js";
+import { createSuggestion, discardSuggestion, getSuggestion, lastSuggestionAt, updateSuggestion } from "../database/suggestions.js";
 import { errorEmbed, successEmbed } from "../utils/embeds.js";
-import { isStaff } from "../utils/permissions.js";
+import { isAdmin, isStaff } from "../utils/permissions.js";
 import { formatPermissionList, missingPermissions } from "../utils/channelPermissions.js";
-import { scheduleSuggestionPanel, SUGGESTION_CHANNEL_PERMISSIONS, SUGGESTION_THREAD_PERMISSIONS } from "../services/suggestionPanel.js";
+import { runInSuggestionChannel, scheduleSuggestionPanel, SUGGESTION_CHANNEL_PERMISSIONS, SUGGESTION_THREAD_PERMISSIONS } from "../services/suggestionPanel.js";
+import { setSuggestionStatus } from "../services/suggestionStatus.js";
 import {
-  buildSuggestionEmbed,
+  buildReasonModal,
+  buildSuggestionCard,
+  buildSuggestionCardComponents,
   buildSuggestionModal,
   buildSuggestionPoll,
-  buildSuggestionText,
+  NEXT_STATUSES,
+  REASON_MODAL_PREFIX,
+  STATUS_BUTTON_PREFIX,
+  SuggestionStatus,
   threadName,
   TITLE_MIN_LENGTH,
 } from "../utils/suggestionViews.js";
 
-// Discord's "invalid form body": what it would answer if it ever refused an embed next to a poll.
-const INVALID_FORM_BODY = 50035;
 // Quanto tempo depois de publicar a sugestão o painel desce — o suficiente para o tópico já existir.
 const PANEL_DELAY_MS = 1_500;
 
@@ -41,8 +45,8 @@ export async function handleOpenSuggestion(interaction) {
   await interaction.showModal(buildSuggestionModal());
 }
 
-// O formulário enviado: a sugestão vai para o canal com a enquete do Discord e um tópico para discussão, e o
-// painel desce para baixo dela.
+// O formulário enviado: a sugestão vai para o canal — o cartão (com a situação e os botões da equipe) e, colada
+// nele, a enquete do Discord —, ganha um tópico para discussão, e o painel desce para baixo dela.
 export async function handleSuggestionModalSubmit(interaction) {
   await interaction.deferReply({ ephemeral: true });
 
@@ -69,22 +73,27 @@ export async function handleSuggestionModalSubmit(interaction) {
     return interaction.editReply({ embeds: [errorEmbed(`O bot não consegue publicar em ${channel} (falta: ${formatPermissionList(missing)}). Avise a equipe!`)] });
   }
 
-  const suggestion = createSuggestion(interaction.guildId, { authorId: interaction.user.id, title, details });
-  const author = { name: interaction.member?.displayName || interaction.user.username, avatarUrl: interaction.user.displayAvatarURL() };
+  const suggestion = createSuggestion(interaction.guildId, {
+    authorId: interaction.user.id,
+    authorName: interaction.member?.displayName || interaction.user.username,
+    authorAvatarUrl: interaction.user.displayAvatarURL(),
+    title,
+    details,
+  });
 
-  let message;
+  let posted;
   try {
-    message = await postSuggestion(channel, cfg, suggestion, author, interaction.user.id);
+    posted = await runInSuggestionChannel(interaction.guildId, () => postSuggestion(channel, cfg, suggestion));
   } catch (err) {
     discardSuggestion(interaction.guildId, suggestion.number);
     console.error("[suggestions] failed to post a suggestion", err);
     return interaction.editReply({ embeds: [errorEmbed("Não consegui publicar a sua sugestão agora. Tente de novo em instantes.")] });
   }
 
-  // O tópico é um extra: sem permissão para criar, a sugestão continua valendo só com a enquete.
+  // O tópico é um extra: sem permissão para criar, a sugestão continua valendo com o cartão e a enquete.
   let thread = null;
   if (!missingPermissions(channel, me, SUGGESTION_THREAD_PERMISSIONS).length) {
-    thread = await message.startThread({ name: threadName(suggestion), autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek }).catch((err) => {
+    thread = await posted.card.startThread({ name: threadName(suggestion), autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek }).catch((err) => {
       console.error("[suggestions] failed to open the discussion thread", err.message);
       return null;
     });
@@ -94,24 +103,83 @@ export async function handleSuggestionModalSubmit(interaction) {
 
   updateSuggestion(interaction.guildId, suggestion.number, (s) => {
     s.channelId = channel.id;
-    s.messageId = message.id;
+    s.cardMessageId = posted.card.id;
+    s.messageId = posted.poll.id;
     s.threadId = thread?.id ?? null;
   });
   scheduleSuggestionPanel(interaction.client, interaction.guildId, PANEL_DELAY_MS);
 
   return interaction.editReply({
-    embeds: [successEmbed(`Sua sugestão **#${suggestion.number}** foi publicada! Acompanhe a votação: ${message.url}`)],
+    embeds: [successEmbed(`Sua sugestão **#${suggestion.number}** foi publicada! Acompanhe a votação: ${posted.card.url}`)],
   });
 }
 
-async function postSuggestion(channel, cfg, suggestion, author, authorId) {
-  const poll = buildSuggestionPoll(cfg, suggestion);
-  const allowedMentions = { parse: [] };
+// O cartão e a enquete, um logo depois do outro (o Discord junta as duas mensagens seguidas do bot num bloco só).
+// Se a enquete falhar, o cartão sozinho não fica no canal.
+async function postSuggestion(channel, cfg, suggestion) {
+  const card = await channel.send({
+    embeds: [buildSuggestionCard(cfg, suggestion)],
+    components: buildSuggestionCardComponents(suggestion),
+    allowedMentions: { parse: [] },
+  });
   try {
-    return await channel.send({ embeds: [buildSuggestionEmbed(cfg, suggestion, author)], poll, allowedMentions });
+    const poll = await channel.send({ poll: buildSuggestionPoll(cfg, suggestion) });
+    return { card, poll };
   } catch (err) {
-    if (err.code !== INVALID_FORM_BODY) throw err;
-    console.warn("[suggestions] Discord refused the embed next to the poll, posting it as text:", err.message);
-    return channel.send({ content: buildSuggestionText(suggestion, authorId), poll, allowedMentions });
+    await card.delete().catch(() => {});
+    throw err;
   }
+}
+
+// Os botões da equipe no cartão. "Analisar" vale na hora; aprovar, recusar e implementar abrem antes um campo para
+// a resposta à comunidade (opcional).
+export async function handleStatusButton(interaction) {
+  const [number, status] = parseTarget(interaction.customId, STATUS_BUTTON_PREFIX);
+  const refusal = checkStatusChange(interaction, number, status);
+  if (refusal) return interaction.reply({ embeds: [errorEmbed(refusal)], ephemeral: true });
+
+  if (SuggestionStatus[status].final) {
+    return interaction.showModal(buildReasonModal(number, status));
+  }
+  await interaction.deferReply({ ephemeral: true });
+  await interaction.editReply({ embeds: [await applyStatus(interaction, number, status, null)] });
+}
+
+export async function handleReasonModalSubmit(interaction) {
+  const [number, status] = parseTarget(interaction.customId, REASON_MODAL_PREFIX);
+  const refusal = checkStatusChange(interaction, number, status);
+  if (refusal) return interaction.reply({ embeds: [errorEmbed(refusal)], ephemeral: true });
+
+  await interaction.deferReply({ ephemeral: true });
+  const reason = interaction.fields.getTextInputValue("motivo").trim() || null;
+  await interaction.editReply({ embeds: [await applyStatus(interaction, number, status, reason)] });
+}
+
+function parseTarget(customId, prefix) {
+  const [number, status] = customId.slice(prefix.length).split(":");
+  return [Number(number), status];
+}
+
+// Por que esta mudança não pode ser feita (ou null se pode): só administradores, e só para uma situação para onde a
+// sugestão ainda pode ir — um botão antigo, clicado depois de outra pessoa já ter respondido, não desfaz nada.
+function checkStatusChange(interaction, number, status) {
+  const cfg = getGuildConfig(interaction.guildId);
+  if (!isAdmin(interaction.member, cfg)) return "Só administradores podem mudar a situação de uma sugestão.";
+  const suggestion = getSuggestion(interaction.guildId, number);
+  if (!suggestion || !SuggestionStatus[status]) return "Essa sugestão não existe mais.";
+  if (!(NEXT_STATUSES[suggestion.status] || []).includes(status)) {
+    const current = SuggestionStatus[suggestion.status];
+    return `A sugestão #${number} já está como ${current.emoji} **${current.label}**. Para mudar mesmo assim, use \`/sugestao responder\`.`;
+  }
+  return null;
+}
+
+async function applyStatus(interaction, number, status, reason) {
+  const result = await setSuggestionStatus(interaction.client, interaction.guildId, number, status, interaction.user.id, reason);
+  if (!result.ok) return errorEmbed(result.reason);
+  return successEmbed(
+    `Sugestão **#${number}** marcada como ${result.view.emoji} **${result.view.label}**.` +
+      (result.view.final ? " A votação foi encerrada." : "") +
+      (result.dmSent ? " Quem sugeriu foi avisado no privado." : " Não deu para avisar quem sugeriu no privado."),
+  );
 }

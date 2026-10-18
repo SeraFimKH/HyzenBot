@@ -4,9 +4,12 @@ import { getText } from "./textDefaults.js";
 
 export const PANEL_BUTTON_ID = "sugestao_abrir";
 export const SUGGESTION_MODAL_ID = "sugestao_modal";
+// sugestao_status:<número>:<situação> — os botões da equipe no cartão de cada sugestão.
+export const STATUS_BUTTON_PREFIX = "sugestao_status:";
+// sugestao_motivo:<número>:<situação> — o motivo que a equipe pode dar ao aprovar, recusar ou implementar.
+export const REASON_MODAL_PREFIX = "sugestao_motivo:";
 
 export const TITLE_MIN_LENGTH = 5;
-// A frase da sugestão vira a pergunta da enquete do Discord (que aceita até 300 caracteres).
 export const TITLE_MAX_LENGTH = 100;
 export const DETAILS_MAX_LENGTH = 1000;
 export const REASON_MAX_LENGTH = 500;
@@ -29,7 +32,23 @@ export const SuggestionStatus = {
   DONE: { emoji: "🚀", label: "Implementada", color: 0xeb459e, final: true },
 };
 
+// O botão que leva a cada situação, e para quais situações dá para ir a partir de cada uma.
+const STATUS_ACTIONS = {
+  REVIEW: { label: "Analisar", emoji: "🔍", style: ButtonStyle.Secondary },
+  APPROVED: { label: "Aprovar", emoji: "✅", style: ButtonStyle.Success },
+  REJECTED: { label: "Recusar", emoji: "✖️", style: ButtonStyle.Danger },
+  DONE: { label: "Implementada", emoji: "🚀", style: ButtonStyle.Primary },
+};
+export const NEXT_STATUSES = {
+  OPEN: ["REVIEW", "APPROVED", "REJECTED"],
+  REVIEW: ["APPROVED", "REJECTED"],
+  APPROVED: ["DONE"],
+  REJECTED: [],
+  DONE: [],
+};
+
 const truncate = (text, max) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+const quote = (text) => `> ${text.replace(/\n/g, "\n> ")}`;
 
 // O painel que fica sempre por último no canal de sugestões, com o botão de enviar.
 export function buildSuggestionPanel(cfg) {
@@ -64,28 +83,74 @@ export function buildSuggestionModal() {
     .addComponents(new ActionRowBuilder().addComponents(title), new ActionRowBuilder().addComponents(details));
 }
 
-// A enquete nativa do Discord de cada sugestão: a frase é a pergunta, e o próprio Discord mostra as barras e a
-// porcentagem de cada resposta.
+// A enquete nativa do Discord, logo abaixo do cartão: o próprio Discord mostra as barras e a porcentagem.
 export function buildSuggestionPoll(cfg, suggestion) {
   const days = Math.min(MAX_POLL_DAYS, Math.max(1, cfg.suggestionPollDays || 7));
-  return { question: { text: suggestion.title }, answers: POLL_ANSWERS, duration: days * 24, allowMultiselect: false };
+  return {
+    question: { text: `Você concorda com a sugestão #${suggestion.number}?` },
+    answers: POLL_ANSWERS,
+    duration: days * 24,
+    allowMultiselect: false,
+  };
 }
 
-// O que vai junto da enquete: quem sugeriu, o número e os detalhes (a frase já está na pergunta da enquete).
-export function buildSuggestionEmbed(cfg, suggestion, author) {
+/**
+ * O cartão da sugestão: quem sugeriu, a ideia e a situação dela. Uma enquete do Discord não pode ser editada depois
+ * de enviada, por isso a situação mora aqui, numa mensagem separada logo acima da enquete — este cartão o bot edita
+ * a cada resposta da equipe.
+ */
+export function buildSuggestionCard(cfg, suggestion) {
+  const view = SuggestionStatus[suggestion.status] || SuggestionStatus.OPEN;
+  const decision = suggestion.decision;
+
   const embed = baseEmbed(cfg.communityName)
-    .setColor(SuggestionStatus.OPEN.color)
-    .setAuthor({ name: author.name, iconURL: author.avatarUrl })
+    .setColor(view.color)
+    .setAuthor({ name: suggestion.authorName || "Membro", iconURL: suggestion.authorAvatarUrl || undefined })
     .setTitle(`💡 Sugestão #${suggestion.number}`)
-    .setFooter({ text: `${cfg.communityName} · vote na enquete e discuta no tópico` });
-  if (suggestion.details) embed.setDescription(suggestion.details);
-  return embed;
+    .setDescription(`### ${suggestion.title}${suggestion.details ? `\n${suggestion.details}` : ""}`)
+    .addFields({ name: "📌 Situação", value: `${view.emoji} **${view.label}**`, inline: true });
+
+  if (decision) {
+    embed.addFields({ name: "👤 Pela equipe", value: `<@${decision.staffId}> <t:${Math.floor(decision.at / 1000)}:R>`, inline: true });
+    if (decision.votes) embed.addFields({ name: "🗳️ Resultado", value: decision.votes, inline: true });
+    if (decision.reason) embed.addFields({ name: "💬 Resposta da equipe", value: truncate(quote(decision.reason), 1024) });
+  }
+
+  const footer = view.final ? "votação encerrada" : NEXT_STATUSES[suggestion.status]?.length ? "vote na enquete abaixo · os botões são da equipe" : "vote na enquete abaixo";
+  return embed.setFooter({ text: `${cfg.communityName} · ${footer}` });
 }
 
-// O mesmo conteúdo em texto, para o caso de o Discord não aceitar o embed junto da enquete.
-export function buildSuggestionText(suggestion, authorId) {
-  const details = suggestion.details ? `\n${suggestion.details}` : "";
-  return `### 💡 Sugestão #${suggestion.number}${details}\n-# Sugerida por <@${authorId}> · vote na enquete e discuta no tópico`;
+// Os botões da equipe no cartão: só as situações para onde a sugestão ainda pode ir.
+export function buildSuggestionCardComponents(suggestion) {
+  const next = NEXT_STATUSES[suggestion.status] || [];
+  if (!next.length) return [];
+  return [
+    new ActionRowBuilder().addComponents(
+      next.map((status) =>
+        new ButtonBuilder()
+          .setCustomId(`${STATUS_BUTTON_PREFIX}${suggestion.number}:${status}`)
+          .setLabel(STATUS_ACTIONS[status].label)
+          .setEmoji(STATUS_ACTIONS[status].emoji)
+          .setStyle(STATUS_ACTIONS[status].style),
+      ),
+    ),
+  ];
+}
+
+// Ao aprovar, recusar ou implementar: o motivo (opcional) que vai para o cartão, o tópico e o privado de quem sugeriu.
+export function buildReasonModal(number, status) {
+  const view = SuggestionStatus[status];
+  const reason = new TextInputBuilder()
+    .setCustomId("motivo")
+    .setLabel("Resposta para a comunidade (opcional)")
+    .setPlaceholder(status === "REJECTED" ? "Ex: Já existe algo parecido no servidor." : "Ex: Vai entrar na próxima atualização!")
+    .setStyle(TextInputStyle.Paragraph)
+    .setMaxLength(REASON_MAX_LENGTH)
+    .setRequired(false);
+  return new ModalBuilder()
+    .setCustomId(`${REASON_MODAL_PREFIX}${number}:${status}`)
+    .setTitle(`${view.emoji} Sugestão #${number}: ${view.label}`)
+    .addComponents(new ActionRowBuilder().addComponents(reason));
 }
 
 export function threadName(suggestion, status = "OPEN") {
@@ -109,7 +174,7 @@ export function buildDecisionEmbed(cfg, suggestion, status, staffId, reason, vot
     .setTitle(`${view.emoji} Sugestão #${suggestion.number} — ${view.label}`)
     .addFields({ name: "💡 Sugestão", value: truncate(suggestion.title, 1024) }, { name: "👤 Respondida por", value: `<@${staffId}>`, inline: true });
   if (votes) embed.addFields({ name: "🗳️ Votação", value: votes, inline: true });
-  if (reason) embed.setDescription(`> ${reason.replace(/\n/g, "\n> ")}`);
+  if (reason) embed.setDescription(quote(reason));
   if (view.final) embed.setFooter({ text: `${cfg.communityName} · votação encerrada` });
   return embed;
 }
@@ -120,5 +185,5 @@ export function buildDecisionDm(cfg, suggestion, status, reason, url) {
   return baseEmbed(cfg.communityName)
     .setColor(view.color)
     .setTitle(`${view.emoji} Sua sugestão #${suggestion.number} está: ${view.label}`)
-    .setDescription(`**${suggestion.title}**${reason ? `\n\n> ${reason.replace(/\n/g, "\n> ")}` : ""}${url ? `\n\n[Ver a sugestão](${url})` : ""}`);
+    .setDescription(`**${suggestion.title}**${reason ? `\n\n${quote(reason)}` : ""}${url ? `\n\n[Ver a sugestão](${url})` : ""}`);
 }

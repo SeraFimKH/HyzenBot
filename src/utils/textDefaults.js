@@ -44,7 +44,7 @@ export const DEFAULT_TEXTS = {
   pix_titulo: "💳 Cobrança Pix — {comunidade}",
   sugestao_panel_titulo: "💡 Sugestões da {comunidade}",
   sugestao_panel_desc:
-    "Tem uma ideia para deixar o servidor ainda melhor? Clique no botão abaixo e conte para a gente!\n\n🗳️ Cada sugestão ganha uma votação — vote ✅ ou ❌ e veja a porcentagem.\n💬 Discuta cada ideia no tópico dela.\n📣 A equipe responde as sugestões e avisa quem sugeriu.",
+    "Tem uma ideia para deixar o servidor ainda melhor? Clique no botão abaixo e conte para a gente!\n\n🗳️ Cada sugestão ganha uma votação — vote ✅ ou ❌ e veja a porcentagem.\n💬 Discuta cada ideia no tópico dela.\n📌 A equipe marca cada uma como em análise, aprovada ou recusada — e avisa quem sugeriu.",
   sugestao_botao: "Enviar sugestão",
 
   ticket_boasvindas_aberto:

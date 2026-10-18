@@ -20,7 +20,7 @@ export function lastSuggestionAt(guildId, userId) {
 
 // Takes the next number and records the suggestion; the message it ends up in is added with updateSuggestion once
 // it's posted (or the whole thing undone with discardSuggestion if posting failed).
-export function createSuggestion(guildId, { authorId, title, details }) {
+export function createSuggestion(guildId, { authorId, authorName, authorAvatarUrl, title, details }) {
   const data = guildData(guildId);
   const now = Date.now();
   const number = data.counter + 1;
@@ -28,11 +28,15 @@ export function createSuggestion(guildId, { authorId, title, details }) {
   data.items[number] = {
     number,
     authorId,
+    authorName,
+    authorAvatarUrl,
     title,
     details,
     status: "OPEN",
     createdAt: now,
     channelId: null,
+    // The card (embed with the status and the staff's buttons) and, right below it, the poll message.
+    cardMessageId: null,
     messageId: null,
     threadId: null,
     previousSuggestionAt: data.lastByUser[authorId] || 0,
