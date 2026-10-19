@@ -15,6 +15,9 @@ import * as statusConfig from "../interactions/statusConfig.js";
 import * as suggestionButtons from "../interactions/suggestionButtons.js";
 import * as suggestionConfig from "../interactions/suggestionConfig.js";
 import * as supportConfig from "../interactions/supportConfig.js";
+import * as adminGuildConfig from "../interactions/adminGuildConfig.js";
+import * as betaConfig from "../interactions/betaConfig.js";
+import { BETA_CLOSE_BUTTON_ID, BETA_OPEN_BUTTON_ID } from "../utils/betaViews.js";
 import { PANEL_BUTTON_ID as SUGGESTION_BUTTON_ID, REASON_MODAL_PREFIX, STATUS_BUTTON_PREFIX, SUGGESTION_MODAL_ID } from "../utils/suggestionViews.js";
 import { handleAuthStart, handleAuthCheck } from "../interactions/authButtons.js";
 
@@ -58,6 +61,9 @@ export async function execute(interaction) {
       if (customId === statusConfig.PIN_BUTTON_ID) return await statusConfig.handleStatusPin(interaction);
       if (customId === SUGGESTION_BUTTON_ID) return await suggestionButtons.handleOpenSuggestion(interaction);
       if (customId.startsWith(STATUS_BUTTON_PREFIX)) return await suggestionButtons.handleStatusButton(interaction);
+      if (customId === adminGuildConfig.ADMIN_GUILD_UNLINK_ID) return await adminGuildConfig.handleAdminGuildUnlink(interaction);
+      if (customId.startsWith(adminGuildConfig.REMOTE_PAGE_PREFIX)) return await adminGuildConfig.handleRemoteChannelPage(interaction);
+      if (customId === BETA_OPEN_BUTTON_ID || customId === BETA_CLOSE_BUTTON_ID) return await betaConfig.handleBetaAccessButton(interaction);
       if (customId === "auth:start") return await handleAuthStart(interaction);
       if (customId === "auth:check") return await handleAuthCheck(interaction);
       return;
@@ -93,6 +99,8 @@ export async function execute(interaction) {
       if (interaction.customId === "ticket_open_select" || interaction.customId === "ticket_type_select") return await ticketButtons.handleTypeSelected(interaction);
       if (interaction.customId === "painel_tipoticket_remover") return await painelMenu.handleTipoTicketRemoveSelect(interaction);
       if (interaction.customId === supportConfig.TYPE_SELECT_ID) return await supportConfig.handleTypeSelect(interaction);
+      if (interaction.customId === adminGuildConfig.ADMIN_GUILD_SELECT_ID) return await adminGuildConfig.handleAdminGuildSelect(interaction);
+      if (interaction.customId.startsWith(adminGuildConfig.REMOTE_CHANNEL_PREFIX)) return await adminGuildConfig.handleRemoteChannelSelect(interaction);
       return;
     }
 

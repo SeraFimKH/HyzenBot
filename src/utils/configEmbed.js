@@ -1,4 +1,5 @@
 import { baseEmbed } from "./embeds.js";
+import { describeChannel, getAdminGuild, LOG_CHANNEL_KEYS } from "./linkedGuilds.js";
 
 export const CHANNEL_LABELS = {
   ticket: "🎫 Canal de tickets",
@@ -16,11 +17,19 @@ export const CHANNEL_LABELS = {
   winLog: "🏆 Canal de logs de vitória",
   status: "📊 Canal do painel de status",
   sugestoes: "💡 Canal de sugestões",
+  sugestoesLog: "🗳️ Canal de logs de sugestões",
+  betaLog: "🧪 Canal de logs de beta",
 };
 
 const channelOrNone = (id) => (id ? `<#${id}>` : "*(não definido)*");
 
-export function buildConfigSummaryEmbed(cfg) {
+// context: anything with the client and the server's id (an interaction) — to show which log channels are in the admin
+// server. Without it the channels are only mentioned.
+export function buildConfigSummaryEmbed(cfg, context = null) {
+  const logChannel = (key) => (context ? describeChannel(context.client, context.guildId, cfg.channels[key]) : null) ?? channelOrNone(cfg.channels[key]);
+  const adminGuild = context && cfg.adminGuildId ? getAdminGuild(context.client, cfg) : null;
+  const adminGuildText = !cfg.adminGuildId ? "*(nenhum — os logs ficam neste servidor)*" : adminGuild ? `**${adminGuild.name}**` : "⚠️ *o bot não está mais no servidor vinculado*";
+
   return baseEmbed(cfg.communityName)
     .setTitle(`⚙️ Configuração da ${cfg.communityName}`)
     .addFields(
@@ -54,8 +63,6 @@ export function buildConfigSummaryEmbed(cfg) {
         value: cfg.raffleDefaultEntryPrice > 0 ? `R$ ${cfg.raffleDefaultEntryPrice.toFixed(2).replace(".", ",")} (pago por padrão)` : "Gratuito por padrão",
         inline: true,
       },
-      { name: CHANNEL_LABELS.ticketLog, value: cfg.channels.ticketLog ? `<#${cfg.channels.ticketLog}>` : "*(não definido)*", inline: true },
-      { name: CHANNEL_LABELS.paymentLog, value: cfg.channels.paymentLog ? `<#${cfg.channels.paymentLog}>` : "*(não definido)*", inline: true },
       {
         name: CHANNEL_LABELS.commands,
         value: cfg.channels.commands ? `<#${cfg.channels.commands}>` : "*(sem restrição — comandos funcionam em qualquer canal)*",
@@ -96,9 +103,15 @@ export function buildConfigSummaryEmbed(cfg) {
         value: cfg.aiEnabled ? "🟢 Ativada" : cfg.aiApiKey ? "⚪ Desativada (chave configurada)" : "⚪ Desativada (sem chave)",
         inline: true,
       },
+      { name: "🔗 Servidor administrativo", value: adminGuildText, inline: true },
       {
-        name: "📋 Canais de log da moderação",
-        value: ["banLog", "muteLog", "warnLog", "winLog"].map((key) => `${CHANNEL_LABELS[key]}: ${channelOrNone(cfg.channels[key])}`).join("\n"),
+        name: "🧪 Beta testers",
+        value: cfg.betaRoles.length ? `${cfg.betaRoles.map((id) => `<@&${id}>`).join(", ")} · \`/beta nick\`` : "*(nenhum cargo — /painel → Beta Testers)*",
+        inline: true,
+      },
+      {
+        name: "📋 Canais de log",
+        value: LOG_CHANNEL_KEYS.map((key) => `${CHANNEL_LABELS[key]}: ${logChannel(key)}`).join("\n").slice(0, 1024),
       },
       { name: CHANNEL_LABELS.status, value: channelOrNone(cfg.channels.status), inline: true },
       {

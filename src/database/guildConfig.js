@@ -68,7 +68,13 @@ function defaultConfig() {
       winLog: null,
       status: null,
       sugestoes: null,
+      sugestoesLog: null,
+      betaLog: null,
     },
+    // /painel → Servidor Administrativo: another Discord server the log channels may point at (utils/linkedGuilds.js).
+    adminGuildId: null,
+    // /painel → Beta Testers: who may register a game name with /beta nick (services/betaTesters.js).
+    betaRoles: [],
     ticketCategoryId: null,
     ticketPanelMessageId: null,
     ticketCounter: 0,

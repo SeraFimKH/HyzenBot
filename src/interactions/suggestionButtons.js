@@ -6,10 +6,12 @@ import { isAdmin, isStaff } from "../utils/permissions.js";
 import { formatPermissionList, missingPermissions } from "../utils/channelPermissions.js";
 import { runInSuggestionChannel, scheduleSuggestionPanel, SUGGESTION_CHANNEL_PERMISSIONS, SUGGESTION_THREAD_PERMISSIONS } from "../services/suggestionPanel.js";
 import { setSuggestionStatus } from "../services/suggestionStatus.js";
+import { postLog } from "../utils/staffLog.js";
 import {
   buildReasonModal,
   buildSuggestionCard,
   buildSuggestionCardComponents,
+  buildSuggestionLogEmbed,
   buildSuggestionModal,
   buildSuggestionPoll,
   NEXT_STATUSES,
@@ -108,6 +110,7 @@ export async function handleSuggestionModalSubmit(interaction) {
     s.threadId = thread?.id ?? null;
   });
   scheduleSuggestionPanel(interaction.client, interaction.guildId, PANEL_DELAY_MS);
+  await postLog(interaction.client, interaction.guildId, "sugestoesLog", { embeds: [buildSuggestionLogEmbed(cfg, suggestion, { url: posted.card.url })] });
 
   return interaction.editReply({
     embeds: [successEmbed(`Sua sugestão **#${suggestion.number}** foi publicada! Acompanhe a votação: ${posted.card.url}`)],

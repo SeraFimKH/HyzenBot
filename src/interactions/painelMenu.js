@@ -24,6 +24,10 @@ import { buildStatusModeView } from "./statusConfig.js";
 import { refreshServerStatus } from "../services/serverStatus.js";
 import { handleOpenSuggestionConfigModal, publishSuggestionPanel } from "./suggestionConfig.js";
 import { handleSupportMenu, MENU_PREFIX as SUPPORT_MENU_PREFIX } from "./supportConfig.js";
+import { buildAdminGuildView, buildLogChannelView } from "./adminGuildConfig.js";
+import { handleBetaMenu, MENU_VALUES as BETA_MENU_VALUES } from "./betaConfig.js";
+import { isLogChannelKey } from "../utils/linkedGuilds.js";
+import { syncBetaTesters } from "../services/betaTesters.js";
 
 const CHANNEL_TIPO_LABELS = {
   ticket: "🎫 Canal de Ticket",
@@ -49,6 +53,7 @@ const CARGO_TIPO_LABELS = {
   staff: "🙋 Cargos Staff",
   verificado: "✅ Cargo de Verificado",
   anuncio: "🔔 Cargo de Menção em Anúncios",
+  beta: "🧪 Cargos de Beta Tester",
 };
 
 function backButton() {
@@ -109,7 +114,9 @@ function buildRoleSelectView(tipo, cfg) {
           : []
         : tipo === "admin"
           ? cfg.adminRoles
-          : cfg.staffRoles;
+          : tipo === "beta"
+            ? cfg.betaRoles
+            : cfg.staffRoles;
 
   const menu = new RoleSelectMenuBuilder()
     .setCustomId(`painel_role_${tipo}`)
@@ -122,6 +129,9 @@ function buildRoleSelectView(tipo, cfg) {
   const descriptions = {
     verificado: 'Selecione o cargo que será dado a quem clicar em "Aceitar" nas regras. Configure as permissões desse cargo no Discord pra liberar os canais que quiser.',
     anuncio: "Selecione o cargo mencionado quando um sorteio, enquete ou aviso é publicado. Escolha o cargo @everyone pra marcar todo mundo. Deixe vazio pra não marcar ninguém.",
+    beta:
+      "Quem tem um destes cargos registra o nick do jogo com `/beta nick` e entra no servidor durante a manutenção (enquanto a entrada dos beta testers estiver liberada).\n\n" +
+      "Quem perder o cargo, ou sair do servidor, perde o nick registrado na hora. Deixar vazio tira todos os beta testers deste servidor.",
   };
 
   return {
@@ -245,7 +255,7 @@ export async function handleSorteioMaxModalSubmit(interaction) {
   });
 
   if (interaction.isFromMessage()) {
-    return interaction.update(buildMainPanel(cfg));
+    return interaction.update(buildMainPanel(cfg, interaction));
   }
 
   return interaction.reply({
@@ -295,7 +305,7 @@ export async function handleSorteioPrecoModalSubmit(interaction) {
   });
 
   if (interaction.isFromMessage()) {
-    return interaction.update(buildMainPanel(cfg));
+    return interaction.update(buildMainPanel(cfg, interaction));
   }
 
   return interaction.reply({
@@ -339,7 +349,7 @@ export async function handleBotNomeModalSubmit(interaction) {
 
   const cfg = getGuildConfig(interaction.guildId);
   if (interaction.isFromMessage()) {
-    return interaction.update(buildMainPanel(cfg));
+    return interaction.update(buildMainPanel(cfg, interaction));
   }
 
   return interaction.reply({
@@ -381,7 +391,7 @@ export async function handleNomeComunidadeModalSubmit(interaction) {
   });
 
   if (interaction.isFromMessage()) {
-    return interaction.update(buildMainPanel(cfg));
+    return interaction.update(buildMainPanel(cfg, interaction));
   }
 
   return interaction.reply({
@@ -447,7 +457,7 @@ export async function handleServerIpModalSubmit(interaction) {
   const enderecoTexto = porta ? `${ip}:${porta}` : ip;
 
   if (interaction.isFromMessage()) {
-    return interaction.update(buildMainPanel(cfg));
+    return interaction.update(buildMainPanel(cfg, interaction));
   }
 
   return interaction.reply({
@@ -462,7 +472,17 @@ export async function handleMenuSelect(interaction) {
 
   if (value.startsWith("canal_")) {
     const tipo = value.replace("canal_", "");
-    return interaction.update(buildChannelSelectView(tipo, cfg));
+    // Os canais de log também podem ser do servidor administrativo.
+    return interaction.update(isLogChannelKey(tipo) ? buildLogChannelView(tipo, cfg, interaction.client, interaction.guildId) : buildChannelSelectView(tipo, cfg));
+  }
+
+  if (value === "admin_servidor") {
+    await interaction.deferUpdate();
+    return interaction.editReply(await buildAdminGuildView(interaction));
+  }
+
+  if (BETA_MENU_VALUES.includes(value)) {
+    return handleBetaMenu(interaction, value);
   }
 
   if (value === "categoria_ticket") {
@@ -579,7 +599,7 @@ export async function handleChannelSelect(interaction) {
     }
   });
 
-  await interaction.update(buildMainPanel(cfg));
+  await interaction.update(buildMainPanel(cfg, interaction));
 
   // O painel de sugestões vai para o canal novo na hora — e a staff vê se faltou alguma permissão.
   if (tipo === "sugestoes") {
@@ -606,10 +626,17 @@ export async function handleRoleSelect(interaction) {
       c.verifiedRoleId = roleIds[0] || null;
     } else if (tipo === "anuncio") {
       c.announcePingRoleId = roleIds[0] || null;
+    } else if (tipo === "beta") {
+      c.betaRoles = roleIds;
     }
   });
 
-  await interaction.update(buildMainPanel(cfg));
+  await interaction.update(buildMainPanel(cfg, interaction));
+
+  // Quem não tem mais nenhum dos cargos de beta perde o nick registrado.
+  if (tipo === "beta") {
+    syncBetaTesters(interaction.client).catch((err) => console.error("[painelMenu] Falha ao conferir os beta testers:", err.message));
+  }
 }
 
 export async function handlePixTestToggle(interaction) {
@@ -622,7 +649,7 @@ export async function handlePixTestToggle(interaction) {
 
 export async function handleBack(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
-  await interaction.update(buildMainPanel(cfg));
+  await interaction.update(buildMainPanel(cfg, interaction));
 }
 
 export async function handleTipoTicketRemoveSelect(interaction) {

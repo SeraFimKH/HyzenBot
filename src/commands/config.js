@@ -247,7 +247,7 @@ export async function execute(interaction) {
   const sub = interaction.options.getSubcommand();
 
   if (sub === "ver") {
-    return interaction.reply({ embeds: [buildConfigSummaryEmbed(cfg)], ephemeral: true });
+    return interaction.reply({ embeds: [buildConfigSummaryEmbed(cfg, interaction)], ephemeral: true });
   }
 
   if (sub === "canal") {

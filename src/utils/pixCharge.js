@@ -4,9 +4,9 @@ import * as realMp from "../services/mercadoPago.js";
 import * as mockMp from "../services/mercadoPagoMock.js";
 import { getPayment, setPayment, updatePayment } from "../database/pixPayments.js";
 import { getTicket } from "../database/tickets.js";
-import { getGuildConfig } from "../database/guildConfig.js";
 import { buildPixEmbed, formatBRL } from "./pixEmbed.js";
 import { errorEmbed } from "./embeds.js";
+import { postLog } from "./staffLog.js";
 
 // Enquanto não houver token do Mercado Pago (nem por guild via /config, nem no .env),
 // o bot usa o serviço mock (QR falso, aprovação automática) pra testar o fluxo sem credenciais reais.
@@ -106,13 +106,7 @@ export async function checkAndUpdatePixPayment(client, paymentId) {
   }
 
   if (status === "approved") {
-    const guildCfg = getGuildConfig(payment.guildId);
-    if (guildCfg.channels.paymentLog) {
-      const logChannel = await client.channels.fetch(guildCfg.channels.paymentLog).catch(() => null);
-      if (logChannel) {
-        await logChannel.send({ embeds: [buildPixEmbed(updated)] }).catch(() => {});
-      }
-    }
+    await postLog(client, payment.guildId, "paymentLog", { embeds: [buildPixEmbed(updated)] });
 
     if (updated.purpose?.type === "raffle_entry") {
       // Import tardio (dinâmico) pra evitar ciclo de módulo ESM travando na inicialização:

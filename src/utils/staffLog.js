@@ -1,24 +1,32 @@
 import { baseEmbed } from "./embeds.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { findDiscordIdByPlayerId } from "../database/auth.js";
+import { logGuildIds } from "./linkedGuilds.js";
 
-// Posts a punishment/win record to whichever log channel the server configured for that category (/config
-// canal or /painel → Moderação) — silently does nothing if the channel isn't set or the bot can't post there,
-// same "log channel is optional" behavior every other log channel in this bot already has (ticketLog,
-// paymentLog, ...).
-export async function postStaffLog(guild, channelKey, embed) {
-  const cfg = getGuildConfig(guild.id);
+// Posts to whichever log channel the server configured for that key (/config canal or /painel) — in the server itself
+// or in its admin server (/painel → Servidor Administrativo). Silently does nothing when the channel isn't set or the
+// bot can't post there: every log channel in this bot is optional. A channel in any other server is refused, should a
+// stale setting point there after the admin server changed.
+export async function postLog(client, guildId, channelKey, payload) {
+  const cfg = getGuildConfig(guildId);
   const channelId = cfg.channels[channelKey];
   if (!channelId) return;
+  await sendLog(client, channelId, logGuildIds(guildId, cfg), channelKey, payload);
+}
 
+async function sendLog(client, channelId, allowedGuildIds, channelKey, payload) {
   try {
-    const channel = await guild.channels.fetch(channelId);
-    if (channel?.isTextBased()) {
-      await channel.send({ embeds: [embed] });
-    }
+    const channel = await client.channels.fetch(channelId);
+    if (!channel?.isTextBased() || !allowedGuildIds.includes(channel.guildId)) return;
+    await channel.send(payload);
   } catch (err) {
     console.error(`[staffLog] failed to post to ${channelKey}`, err.message);
   }
+}
+
+// A punishment/win record (/ban, /mute, /warn...) to the server's channel for that category.
+export async function postStaffLog(guild, channelKey, embed) {
+  await postLog(guild.client, guild.id, channelKey, { embeds: [embed] });
 }
 
 export function punishmentLogEmbed({ title, color, player, staffTag, reason, extraFields = [] }) {
@@ -34,10 +42,17 @@ export function punishmentLogEmbed({ title, color, player, staffTag, reason, ext
 }
 
 // Same as postStaffLog, but for events with no single originating guild (a punishment expiring naturally has
-// no "staff member who did it right now" to scope it to) — posts to every guild that configured the channel.
+// no "staff member who did it right now" to scope it to) — posts to every guild that configured the channel. Once per
+// channel: the players' server and the admin server both pointing at the same log channel would post everything twice.
 export async function broadcastStaffLog(client, channelKey, embed) {
+  const targets = new Map();
   for (const guild of client.guilds.cache.values()) {
-    await postStaffLog(guild, channelKey, embed);
+    const cfg = getGuildConfig(guild.id);
+    const channelId = cfg.channels[channelKey];
+    if (channelId && !targets.has(channelId)) targets.set(channelId, logGuildIds(guild.id, cfg));
+  }
+  for (const [channelId, allowedGuildIds] of targets) {
+    await sendLog(client, channelId, allowedGuildIds, channelKey, { embeds: [embed] });
   }
 }
 

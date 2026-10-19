@@ -179,6 +179,23 @@ export function buildDecisionEmbed(cfg, suggestion, status, staffId, reason, vot
   return embed;
 }
 
+// O registro no canal de logs de sugestões (que pode ficar no servidor administrativo): cada sugestão nova e cada
+// resposta da equipe, com quem fez e o link para a sugestão.
+export function buildSuggestionLogEmbed(cfg, suggestion, { status = "OPEN", staffId = null, reason = null, votes = null, url = null } = {}) {
+  const view = SuggestionStatus[status];
+  const embed = baseEmbed(cfg.communityName)
+    .setColor(view.color)
+    .setTitle(staffId ? `${view.emoji} Sugestão #${suggestion.number} — ${view.label}` : `💡 Nova sugestão #${suggestion.number}`)
+    .addFields({ name: "💡 Sugestão", value: truncate(suggestion.title, 1024) });
+  if (!staffId && suggestion.details) embed.addFields({ name: "📝 Detalhes", value: truncate(suggestion.details, 1024) });
+  embed.addFields({ name: "👤 Quem sugeriu", value: `<@${suggestion.authorId}> · ${truncate(suggestion.authorName ?? "?", 80)}`, inline: true });
+  if (staffId) embed.addFields({ name: "🛡️ Respondida por", value: `<@${staffId}>`, inline: true });
+  if (votes) embed.addFields({ name: "🗳️ Votação", value: votes, inline: true });
+  if (reason) embed.addFields({ name: "💬 Motivo", value: truncate(reason, 1024) });
+  if (url) embed.setDescription(`[Ver a sugestão](${url})`);
+  return embed;
+}
+
 // O aviso no privado de quem sugeriu.
 export function buildDecisionDm(cfg, suggestion, status, reason, url) {
   const view = SuggestionStatus[status];

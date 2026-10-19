@@ -2,6 +2,18 @@ import { ActionRowBuilder, StringSelectMenuBuilder } from "discord.js";
 import { buildConfigSummaryEmbed } from "./configEmbed.js";
 import { TEXT_FIELDS } from "./textDefaults.js";
 
+// Every log channel, in one place: each can be in this server or in the admin server (utils/linkedGuilds.js).
+const LOG_OPTIONS = [
+  { key: "ticketLog", label: "Logs de Ticket", emoji: "📋" },
+  { key: "paymentLog", label: "Logs de Pagamento", emoji: "💰" },
+  { key: "banLog", label: "Logs de Banimento", emoji: "🔨" },
+  { key: "muteLog", label: "Logs de Mute", emoji: "🔇" },
+  { key: "warnLog", label: "Logs de Advertência", emoji: "⚠️" },
+  { key: "winLog", label: "Logs de Vitória", emoji: "🏆" },
+  { key: "sugestoesLog", label: "Logs de Sugestões", emoji: "🗳️" },
+  { key: "betaLog", label: "Logs de Beta", emoji: "🧪" },
+];
+
 const CATEGORIES = [
   {
     id: "tickets",
@@ -66,6 +78,7 @@ const CATEGORIES = [
       { label: "Canal de Comandos", description: "Onde membros podem usar /participar e /feed", value: "canal_commands", emoji: "💬" },
       { label: "Cargo de Menção em Anúncios", description: "Cargo (ou @everyone) marcado em sorteio, enquete e aviso", value: "cargo_anuncio", emoji: "🔔" },
       { label: "Canal de Sugestões", description: "Onde as sugestões ficam, com o botão de enviar sempre por último", value: "canal_sugestoes", emoji: "💡" },
+      { label: "Canal de Logs de Sugestões", description: "Cada sugestão nova e cada resposta da equipe (pode ser no servidor admin)", value: "canal_sugestoesLog", emoji: "🗳️" },
       { label: "Configurar Sugestões", description: "Quantos dias dura a votação e o intervalo entre sugestões", value: "sugestao_config", emoji: "🗳️" },
       { label: "Publicar Painel de Sugestões", description: "Posta de novo o botão no fim do canal (depois de mudar os textos)", value: "publicar_sugestoes", emoji: "📌" },
     ],
@@ -81,6 +94,28 @@ const CATEGORIES = [
       { label: "Nome do Bot no Servidor", description: "Muda o apelido do bot neste servidor", value: "bot_nome", emoji: "🏷️" },
       { label: "Nome da Comunidade", description: "Nome usado nos embeds públicos (rodapé, títulos, etc)", value: "nome_comunidade", emoji: "🏢" },
       { label: "Endereço do Servidor", description: "IP e porta usados pelo /ip e quando alguém pergunta o IP no chat", value: "server_ip", emoji: "🌐" },
+    ],
+  },
+  {
+    id: "servidor_admin",
+    label: "Servidor Administrativo & Logs",
+    emoji: "🔗",
+    description: "Outro servidor do Discord (o da equipe) para receber os logs",
+    options: [
+      { label: "Escolher o servidor administrativo", description: "O servidor da equipe, para onde os logs podem ir", value: "admin_servidor", emoji: "🔗" },
+      ...LOG_OPTIONS.map((log) => ({ label: `Canal de ${log.label}`, description: "Neste servidor ou no servidor administrativo", value: `canal_${log.key}`, emoji: log.emoji })),
+    ],
+  },
+  {
+    id: "beta",
+    label: "Beta Testers",
+    emoji: "🧪",
+    description: "Quem testa o servidor na manutenção: cargo, liberar ou bloquear",
+    options: [
+      { label: "Cargos de Beta Tester", description: "Quem tem um deles registra o nick com /beta nick", value: "cargo_beta", emoji: "🧪" },
+      { label: "Liberar ou bloquear a entrada", description: "Se os beta testers entram no servidor durante a manutenção", value: "beta_acesso", emoji: "🔓" },
+      { label: "Ver beta testers", description: "Quem registrou o nick, e com qual", value: "beta_lista", emoji: "📋" },
+      { label: "Canal de Logs de Beta", description: "Registros, remoções e quem liberou ou bloqueou", value: "canal_betaLog", emoji: "🧪" },
     ],
   },
   {
@@ -148,14 +183,15 @@ export function findCategory(id) {
   return CATEGORIES.find((c) => c.id === id);
 }
 
-export function buildMainPanel(cfg) {
+// context: the interaction (its client and server id), for the summary to show what's in the admin server.
+export function buildMainPanel(cfg, context) {
   const select = new StringSelectMenuBuilder()
     .setCustomId("painel_categoria")
     .setPlaceholder("Escolha uma categoria...")
     .addOptions(CATEGORIES.map((c) => ({ label: c.label, description: c.description, value: c.id, emoji: c.emoji })));
 
   return {
-    embeds: [buildConfigSummaryEmbed(cfg).setDescription("Selecione uma categoria abaixo para configurar. Este painel é visível só para você.")],
+    embeds: [buildConfigSummaryEmbed(cfg, context).setDescription("Selecione uma categoria abaixo para configurar. Este painel é visível só para você.")],
     components: [new ActionRowBuilder().addComponents(select)],
   };
 }

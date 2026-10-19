@@ -67,7 +67,7 @@ export async function handleAiKeyModalSubmit(interaction) {
   });
 
   if (interaction.isFromMessage()) {
-    return interaction.update(buildMainPanel(updated));
+    return interaction.update(buildMainPanel(updated, interaction));
   }
 
   return interaction.reply({
@@ -115,7 +115,7 @@ export async function handleAiContextModalSubmit(interaction) {
   });
 
   if (interaction.isFromMessage()) {
-    return interaction.update(buildMainPanel(updated));
+    return interaction.update(buildMainPanel(updated, interaction));
   }
 
   return interaction.reply({

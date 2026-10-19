@@ -51,7 +51,7 @@ export async function handleRulesModalSubmit(interaction) {
   });
 
   if (interaction.isFromMessage()) {
-    return interaction.update(buildMainPanel(updated));
+    return interaction.update(buildMainPanel(updated, interaction));
   }
 
   return interaction.reply({

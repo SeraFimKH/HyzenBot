@@ -15,5 +15,5 @@ export async function execute(interaction) {
     return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para usar este comando.")], ephemeral: true });
   }
 
-  await interaction.reply({ ...buildMainPanel(cfg), ephemeral: true });
+  await interaction.reply({ ...buildMainPanel(cfg, interaction), ephemeral: true });
 }

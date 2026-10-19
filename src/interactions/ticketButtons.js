@@ -17,6 +17,7 @@ import { formatDuration } from "../utils/format.js";
 import { buildTicketModal, buildTicketOpenRow, TICKET_HOURS_NOTE, TICKET_MODAL_PREFIX, TICKET_TYPE_SELECT_ID } from "../utils/ticketPanel.js";
 import { isWithinSupportHours } from "../utils/businessHours.js";
 import { getText } from "../utils/textDefaults.js";
+import { postLog } from "../utils/staffLog.js";
 
 function ticketControlsRow({ claimed, closing, hasVoice }) {
   return new ActionRowBuilder().addComponents(
@@ -365,10 +366,6 @@ async function sendTicketTranscript(interaction, cfg, ticket) {
       .catch((err) => console.warn(`[ticketButtons] Não foi possível enviar a transcrição no privado de ${ticket.openerId} (provavelmente DMs fechadas):`, err.message));
   }
 
-  if (cfg.channels.ticketLog) {
-    const logChannel = await interaction.guild.channels.fetch(cfg.channels.ticketLog).catch(() => null);
-    if (logChannel) {
-      await logChannel.send({ embeds: [summary], files: [attachment] }).catch((err) => console.error("[ticketButtons] Falha ao enviar log de ticket:", err));
-    }
-  }
+  // Aqui ou no servidor administrativo, se o canal de logs de ticket for de lá.
+  await postLog(interaction.client, interaction.guildId, "ticketLog", { embeds: [summary], files: [attachment] });
 }

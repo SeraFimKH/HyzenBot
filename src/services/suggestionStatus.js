@@ -1,6 +1,16 @@
 import { getGuildConfig } from "../database/guildConfig.js";
 import { getSuggestion, updateSuggestion } from "../database/suggestions.js";
-import { buildDecisionDm, buildDecisionEmbed, buildSuggestionCard, buildSuggestionCardComponents, SuggestionStatus, summarizeVotes, threadName } from "../utils/suggestionViews.js";
+import { postLog } from "../utils/staffLog.js";
+import {
+  buildDecisionDm,
+  buildDecisionEmbed,
+  buildSuggestionCard,
+  buildSuggestionCardComponents,
+  buildSuggestionLogEmbed,
+  SuggestionStatus,
+  summarizeVotes,
+  threadName,
+} from "../utils/suggestionViews.js";
 
 const POLL_EXPIRED = 520001;
 
@@ -56,6 +66,8 @@ export async function setSuggestionStatus(client, guildId, number, status, staff
         .then(() => true)
         .catch(() => false)
     : false;
+
+  await postLog(client, guildId, "sugestoesLog", { embeds: [buildSuggestionLogEmbed(cfg, suggestion, { status, staffId, reason, votes, url })] });
 
   return { ok: true, suggestion, view, dmSent, url };
 }

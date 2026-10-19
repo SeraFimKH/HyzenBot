@@ -53,7 +53,7 @@ export async function handleSuggestionConfigModalSubmit(interaction) {
   });
 
   if (interaction.isFromMessage()) {
-    return interaction.update(buildMainPanel(cfg));
+    return interaction.update(buildMainPanel(cfg, interaction));
   }
   return interaction.reply({
     embeds: [baseEmbed().setDescription(`✅ Votação de **${days} dia(s)**, intervalo de **${cooldown} minuto(s)** entre sugestões.`)],
