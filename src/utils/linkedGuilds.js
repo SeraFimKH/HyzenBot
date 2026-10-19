@@ -3,7 +3,7 @@ import { ChannelType, PermissionsBitField } from "discord.js";
 // The admin server: another Discord server the bot is in, where this server's logs go — the players in one server, the
 // staff and its logs in another. Linked in /painel → Servidor Administrativo; from then on every log channel
 // (LOG_CHANNEL_KEYS) can be a channel there. Only logs: what the players use (tickets, suggestions, status) stays here.
-export const LOG_CHANNEL_KEYS = ["ticketLog", "paymentLog", "banLog", "muteLog", "warnLog", "winLog", "sugestoesLog", "betaLog"];
+export const LOG_CHANNEL_KEYS = ["ticketLog", "paymentLog", "banLog", "muteLog", "warnLog", "winLog", "sugestoesLog"];
 
 const { Flags } = PermissionsBitField;
 const POST_PERMISSIONS = [Flags.ViewChannel, Flags.SendMessages, Flags.EmbedLinks];

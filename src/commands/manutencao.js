@@ -1,12 +1,14 @@
 import { SlashCommandBuilder } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
-import { StatusTableMissingError } from "../database/networkStatus.js";
+import { getNetworkStatus, isBetaAccessOpen, setBetaAccessOpen, StatusTableMissingError } from "../database/networkStatus.js";
 import { allowPlayer, disallowPlayer, findKnownPlayerName, listAllowedPlayers, MAX_NAME_LENGTH } from "../database/maintenanceAllowlist.js";
+import { accessChangedText, accessLabel, BETA_TABLE_MISSING, buildBetaAccessEmbed } from "../utils/betaViews.js";
 import { baseEmbed, errorEmbed, successEmbed } from "../utils/embeds.js";
 import { isAdmin } from "../utils/permissions.js";
 
 // Os jogadores que podem entrar no servidor durante a manutenção, além da equipe (quem tem
 // hyzencore.maintenance.bypass): um testador, um criador de conteúdo. A mesma lista do /manutencao do jogo.
+// /manutencao beta: os beta testers (quem tem a tag de beta no jogo) entram ou não — a mesma chave do /manutencao beta do jogo.
 export const data = new SlashCommandBuilder()
   .setName("manutencao")
   .setDescription("Jogadores liberados para entrar no servidor durante a manutenção (administradores).")
@@ -22,7 +24,18 @@ export const data = new SlashCommandBuilder()
       .setDescription("Tira um jogador da lista (se ele estiver no servidor durante a manutenção, é desconectado).")
       .addStringOption((opt) => opt.setName("jogador").setDescription("O nome do jogador no Minecraft").setRequired(true).setMaxLength(MAX_NAME_LENGTH)),
   )
-  .addSubcommand((sub) => sub.setName("lista").setDescription("Mostra quem está liberado para entrar durante a manutenção."));
+  .addSubcommand((sub) => sub.setName("lista").setDescription("Mostra quem está liberado para entrar durante a manutenção."))
+  .addSubcommand((sub) =>
+    sub
+      .setName("beta")
+      .setDescription("Libera ou bloqueia, na manutenção, quem tem a tag de beta no jogo.")
+      .addStringOption((opt) =>
+        opt
+          .setName("estado")
+          .setDescription("Liberar ou bloquear a entrada dos beta testers")
+          .addChoices({ name: "🔓 Liberar", value: "liberar" }, { name: "🔒 Bloquear", value: "bloquear" }),
+      ),
+  );
 
 export async function execute(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
@@ -34,6 +47,7 @@ export async function execute(interaction) {
   try {
     const sub = interaction.options.getSubcommand();
     if (sub === "lista") return await showList(interaction, cfg);
+    if (sub === "beta") return await betaAccess(interaction, cfg);
 
     const typed = interaction.options.getString("jogador", true).trim();
     if (!typed) return interaction.editReply({ embeds: [errorEmbed("Informe o nome do jogador.")] });
@@ -56,13 +70,29 @@ export async function execute(interaction) {
     });
   } catch (err) {
     if (err instanceof StatusTableMissingError) {
-      return interaction.editReply({
-        embeds: [errorEmbed("O banco ainda não tem a lista da manutenção. Ela é criada pelo **HyzenCore** atualizado quando o servidor liga — atualize o plugin, ligue o servidor uma vez e tente de novo.")],
-      });
+      const missing =
+        interaction.options.getSubcommand() === "beta"
+          ? BETA_TABLE_MISSING
+          : "O banco ainda não tem a lista da manutenção. Ela é criada pelo **HyzenCore** atualizado quando o servidor liga — atualize o plugin, ligue o servidor uma vez e tente de novo.";
+      return interaction.editReply({ embeds: [errorEmbed(missing)] });
     }
     console.error("[manutencao] failed", err);
     return interaction.editReply({ embeds: [errorEmbed("Não consegui acessar a lista no banco de dados. Tente de novo em instantes.")] });
   }
+}
+
+// Sem estado: como está. Com: muda (e diz se já estava assim).
+async function betaAccess(interaction, cfg) {
+  const choice = interaction.options.getString("estado");
+  const open = await isBetaAccessOpen();
+  if (!choice) return interaction.editReply({ embeds: [buildBetaAccessEmbed(cfg, open)] });
+
+  const wanted = choice === "liberar";
+  if (wanted === open) {
+    return interaction.editReply({ embeds: [errorEmbed(`A entrada dos beta testers já está ${accessLabel(open)}.`)] });
+  }
+  await setBetaAccessOpen(wanted);
+  return interaction.editReply({ embeds: [successEmbed(accessChangedText(wanted, await getNetworkStatus()))] });
 }
 
 async function showList(interaction, cfg) {

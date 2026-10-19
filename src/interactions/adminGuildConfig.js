@@ -59,7 +59,7 @@ export async function buildAdminGuildView(interaction, notice = null) {
     .setDescription(
       `${notice ? `${notice}\n\n` : ""}${state}\n\n` +
         "Os jogadores ficam aqui e a equipe recebe os logs no outro servidor: ao escolher um canal de log (tickets, pagamentos, " +
-        "banimentos, mutes, advertências, vitórias, sugestões e beta), aparecem também os canais de lá.\n\n" +
+        "banimentos, mutes, advertências, vitórias e sugestões), aparecem também os canais de lá.\n\n" +
         choose,
     );
   if (linked) {

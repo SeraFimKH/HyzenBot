@@ -11,7 +11,6 @@ const LOG_OPTIONS = [
   { key: "warnLog", label: "Logs de Advertência", emoji: "⚠️" },
   { key: "winLog", label: "Logs de Vitória", emoji: "🏆" },
   { key: "sugestoesLog", label: "Logs de Sugestões", emoji: "🗳️" },
-  { key: "betaLog", label: "Logs de Beta", emoji: "🧪" },
 ];
 
 const CATEGORIES = [
@@ -107,18 +106,6 @@ const CATEGORIES = [
     ],
   },
   {
-    id: "beta",
-    label: "Beta Testers",
-    emoji: "🧪",
-    description: "Quem testa o servidor na manutenção: cargo, liberar ou bloquear",
-    options: [
-      { label: "Cargos de Beta Tester", description: "Quem tem um deles registra o nick com /beta nick", value: "cargo_beta", emoji: "🧪" },
-      { label: "Liberar ou bloquear a entrada", description: "Se os beta testers entram no servidor durante a manutenção", value: "beta_acesso", emoji: "🔓" },
-      { label: "Ver beta testers", description: "Quem registrou o nick, e com qual", value: "beta_lista", emoji: "📋" },
-      { label: "Canal de Logs de Beta", description: "Registros, remoções e quem liberou ou bloqueou", value: "canal_betaLog", emoji: "🧪" },
-    ],
-  },
-  {
     id: "suporte",
     label: "Suporte — Permissões",
     emoji: "🎧",
@@ -135,10 +122,11 @@ const CATEGORIES = [
     id: "servidor",
     label: "Servidor do Jogo",
     emoji: "📊",
-    description: "Status do servidor (online, manutenção, offline) e o painel de status",
+    description: "Status do servidor (online, manutenção, offline), o painel de status e os beta testers",
     options: [
       { label: "Definir Status do Servidor", description: "Automático, online, manutenção ou offline", value: "status_definir", emoji: "🚦" },
       { label: "Canal do Painel de Status", description: "Onde o bot mantém o status e os jogadores online sempre atualizados", value: "canal_status", emoji: "📊" },
+      { label: "Entrada dos Beta Testers", description: "Libera ou bloqueia, na manutenção, quem tem a tag de beta no jogo", value: "beta_acesso", emoji: "🧪" },
     ],
   },
   {

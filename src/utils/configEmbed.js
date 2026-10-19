@@ -18,7 +18,6 @@ export const CHANNEL_LABELS = {
   status: "📊 Canal do painel de status",
   sugestoes: "💡 Canal de sugestões",
   sugestoesLog: "🗳️ Canal de logs de sugestões",
-  betaLog: "🧪 Canal de logs de beta",
 };
 
 const channelOrNone = (id) => (id ? `<#${id}>` : "*(não definido)*");
@@ -104,11 +103,6 @@ export function buildConfigSummaryEmbed(cfg, context = null) {
         inline: true,
       },
       { name: "🔗 Servidor administrativo", value: adminGuildText, inline: true },
-      {
-        name: "🧪 Beta testers",
-        value: cfg.betaRoles.length ? `${cfg.betaRoles.map((id) => `<@&${id}>`).join(", ")} · \`/beta nick\`` : "*(nenhum cargo — /painel → Beta Testers)*",
-        inline: true,
-      },
       {
         name: "📋 Canais de log",
         value: LOG_CHANNEL_KEYS.map((key) => `${CHANNEL_LABELS[key]}: ${logChannel(key)}`).join("\n").slice(0, 1024),

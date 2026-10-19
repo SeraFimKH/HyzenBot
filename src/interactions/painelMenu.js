@@ -27,7 +27,6 @@ import { handleSupportMenu, MENU_PREFIX as SUPPORT_MENU_PREFIX } from "./support
 import { buildAdminGuildView, buildLogChannelView } from "./adminGuildConfig.js";
 import { handleBetaMenu, MENU_VALUES as BETA_MENU_VALUES } from "./betaConfig.js";
 import { isLogChannelKey } from "../utils/linkedGuilds.js";
-import { syncBetaTesters } from "../services/betaTesters.js";
 
 const CHANNEL_TIPO_LABELS = {
   ticket: "🎫 Canal de Ticket",
@@ -53,7 +52,6 @@ const CARGO_TIPO_LABELS = {
   staff: "🙋 Cargos Staff",
   verificado: "✅ Cargo de Verificado",
   anuncio: "🔔 Cargo de Menção em Anúncios",
-  beta: "🧪 Cargos de Beta Tester",
 };
 
 function backButton() {
@@ -114,9 +112,7 @@ function buildRoleSelectView(tipo, cfg) {
           : []
         : tipo === "admin"
           ? cfg.adminRoles
-          : tipo === "beta"
-            ? cfg.betaRoles
-            : cfg.staffRoles;
+          : cfg.staffRoles;
 
   const menu = new RoleSelectMenuBuilder()
     .setCustomId(`painel_role_${tipo}`)
@@ -129,9 +125,6 @@ function buildRoleSelectView(tipo, cfg) {
   const descriptions = {
     verificado: 'Selecione o cargo que será dado a quem clicar em "Aceitar" nas regras. Configure as permissões desse cargo no Discord pra liberar os canais que quiser.',
     anuncio: "Selecione o cargo mencionado quando um sorteio, enquete ou aviso é publicado. Escolha o cargo @everyone pra marcar todo mundo. Deixe vazio pra não marcar ninguém.",
-    beta:
-      "Quem tem um destes cargos registra o nick do jogo com `/beta nick` e entra no servidor durante a manutenção (enquanto a entrada dos beta testers estiver liberada).\n\n" +
-      "Quem perder o cargo, ou sair do servidor, perde o nick registrado na hora. Deixar vazio tira todos os beta testers deste servidor.",
   };
 
   return {
@@ -626,17 +619,10 @@ export async function handleRoleSelect(interaction) {
       c.verifiedRoleId = roleIds[0] || null;
     } else if (tipo === "anuncio") {
       c.announcePingRoleId = roleIds[0] || null;
-    } else if (tipo === "beta") {
-      c.betaRoles = roleIds;
     }
   });
 
   await interaction.update(buildMainPanel(cfg, interaction));
-
-  // Quem não tem mais nenhum dos cargos de beta perde o nick registrado.
-  if (tipo === "beta") {
-    syncBetaTesters(interaction.client).catch((err) => console.error("[painelMenu] Falha ao conferir os beta testers:", err.message));
-  }
 }
 
 export async function handlePixTestToggle(interaction) {

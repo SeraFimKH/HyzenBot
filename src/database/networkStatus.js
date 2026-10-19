@@ -97,3 +97,28 @@ export async function setNetworkStatus(mode, reason, changedBy) {
   await publishNetworkStatus({ mode, server: DISCORD_ORIGIN });
   return lastKnown;
 }
+
+// The beta testers' entry (HyzenCore/migrations/V4__add_hyzen_beta_open.sql): whether who has the beta tag in the game gets
+// in during a maintenance. The game flips the same switch with /manutencao beta. Both throw StatusTableMissingError
+// before the HyzenCore that adds the column has started against this database.
+const UNDEFINED_COLUMN = "42703";
+
+async function betaQuery(sql, params) {
+  try {
+    return await pool.query(sql, params);
+  } catch (err) {
+    if (err.code === UNDEFINED_TABLE || err.code === UNDEFINED_COLUMN) throw new StatusTableMissingError();
+    throw err;
+  }
+}
+
+export async function isBetaAccessOpen() {
+  const result = await betaQuery("SELECT beta_open FROM hyzen_network_status WHERE id = $1", [ROW_ID]);
+  return result.rows[0]?.beta_open ?? true;
+}
+
+// Closing it mid-maintenance disconnects, on every server, the beta testers who are playing.
+export async function setBetaAccessOpen(open) {
+  await betaQuery("UPDATE hyzen_network_status SET beta_open = $1 WHERE id = $2", [open, ROW_ID]);
+  await publishNetworkStatus({ beta: true, server: DISCORD_ORIGIN });
+}
