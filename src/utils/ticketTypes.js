@@ -14,6 +14,9 @@ export function addTicketType(cfg, label, emoji) {
 export function removeTicketTypes(cfg, labels) {
   const lower = labels.map((l) => l.toLowerCase());
   const before = cfg.ticketTypes.length;
+  for (const type of cfg.ticketTypes) {
+    if (lower.includes(type.label.toLowerCase()) && cfg.support?.typeRoles) delete cfg.support.typeRoles[type.label];
+  }
   cfg.ticketTypes = cfg.ticketTypes.filter((t) => !lower.includes(t.label.toLowerCase()));
   return before - cfg.ticketTypes.length;
 }

@@ -77,10 +77,23 @@ const CATEGORIES = [
     description: "Cargos com permissão de admin/staff do bot",
     options: [
       { label: "Cargos Administradores", description: "Quem pode usar /config, /sorteio, /enquete, /aviso", value: "cargo_admin", emoji: "🛡️" },
-      { label: "Cargos Staff", description: "Quem pode assumir/fechar tickets", value: "cargo_staff", emoji: "🙋" },
+      { label: "Cargos Staff (moderação)", description: "/ban, /mute, /kick, /warn — e os tickets, enquanto o Suporte não tiver cargos", value: "cargo_staff", emoji: "🙋" },
       { label: "Nome do Bot no Servidor", description: "Muda o apelido do bot neste servidor", value: "bot_nome", emoji: "🏷️" },
       { label: "Nome da Comunidade", description: "Nome usado nos embeds públicos (rodapé, títulos, etc)", value: "nome_comunidade", emoji: "🏢" },
       { label: "Endereço do Servidor", description: "IP e porta usados pelo /ip e quando alguém pergunta o IP no chat", value: "server_ip", emoji: "🌐" },
+    ],
+  },
+  {
+    id: "suporte",
+    label: "Suporte — Permissões",
+    emoji: "🎧",
+    description: "Quais cargos atendem os tickets, fecham, geram Pix e a equipe de cada tipo",
+    options: [
+      { label: "Ver permissões do suporte", description: "Quem pode fazer o quê nos tickets", value: "suporte_resumo", emoji: "📋" },
+      { label: "Cargos que atendem os tickets", description: "Veem os tickets, respondem, assumem e criam canal de voz", value: "suporte_atender", emoji: "🙋" },
+      { label: "Cargos que podem fechar tickets", description: "Vazio = os mesmos que atendem", value: "suporte_fechar", emoji: "🔒" },
+      { label: "Cargos que podem gerar Pix", description: "Botão Gerar Pix e /pix. Vazio = os mesmos que atendem", value: "suporte_pix", emoji: "💳" },
+      { label: "Equipe por tipo de ticket", description: "Ex: Compra só para Vendas — só a equipe (e os admins) vê aquele tipo", value: "suporte_tipos", emoji: "🗂️" },
     ],
   },
   {

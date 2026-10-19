@@ -101,6 +101,11 @@ function defaultConfig() {
     suggestionPanelChannelId: null,
     suggestionPollDays: 7,
     suggestionCooldownMinutes: 10,
+    // /painel → Suporte — Permissões (see utils/supportPermissions.js). typeRoles: support type label → its team.
+    support: {
+      roles: { atender: [], fechar: [], pix: [] },
+      typeRoles: {},
+    },
   };
 }
 
@@ -115,6 +120,10 @@ export function getGuildConfig(guildId) {
     ...cfg,
     channels: { ...defaultConfig().channels, ...(cfg.channels || {}) },
     texts: { ...(cfg.texts || {}) },
+    support: {
+      roles: { ...defaultConfig().support.roles, ...(cfg.support?.roles || {}) },
+      typeRoles: { ...(cfg.support?.typeRoles || {}) },
+    },
   };
 }
 

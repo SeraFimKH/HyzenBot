@@ -1,7 +1,9 @@
 import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from "discord.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { getPayment } from "../database/pixPayments.js";
-import { isStaff, isAdmin } from "../utils/permissions.js";
+import { getTicket } from "../database/tickets.js";
+import { isAdmin } from "../utils/permissions.js";
+import { canSupport, SupportPermission } from "../utils/supportPermissions.js";
 import { errorEmbed, successEmbed } from "../utils/embeds.js";
 import { createAndPostPixCharge, checkAndUpdatePixPayment, replyPixError } from "../utils/pixCharge.js";
 import { buildMainPanel } from "../utils/painelView.js";
@@ -18,7 +20,7 @@ function parseValor(raw) {
 export async function handleOpenPixModal(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
-  if (!isStaff(interaction.member, cfg)) {
+  if (!canSupport(interaction.member, cfg, SupportPermission.PIX, getTicket(interaction.channelId)?.type)) {
     return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para gerar cobranças Pix.")], ephemeral: true });
   }
 
@@ -51,7 +53,7 @@ export async function handleOpenPixModal(interaction) {
 export async function handlePixModalSubmit(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
-  if (!isStaff(interaction.member, cfg)) {
+  if (!canSupport(interaction.member, cfg, SupportPermission.PIX, getTicket(interaction.channelId)?.type)) {
     return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para gerar cobranças Pix.")], ephemeral: true });
   }
 

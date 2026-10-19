@@ -29,8 +29,15 @@ export function buildConfigSummaryEmbed(cfg) {
         value: cfg.adminRoles.length ? cfg.adminRoles.map((id) => `<@&${id}>`).join(", ") : '*(nenhum, usando "Gerenciar Servidor")*',
       },
       {
-        name: "Cargos staff (tickets)",
+        name: "Cargos staff (moderação)",
         value: cfg.staffRoles.length ? cfg.staffRoles.map((id) => `<@&${id}>`).join(", ") : "*(nenhum)*",
+      },
+      {
+        name: "🎧 Atendem os tickets",
+        value: cfg.support.roles.atender.length
+          ? cfg.support.roles.atender.map((id) => `<@&${id}>`).join(", ") +
+            (Object.keys(cfg.support.typeRoles).length ? ` · ${Object.keys(cfg.support.typeRoles).length} tipo(s) com equipe própria` : "")
+          : "*(os cargos staff — /painel → Suporte — Permissões)*",
       },
       { name: CHANNEL_LABELS.ticket, value: cfg.channels.ticket ? `<#${cfg.channels.ticket}>` : "*(não definido)*", inline: true },
       { name: CHANNEL_LABELS.feedback, value: cfg.channels.feedback ? `<#${cfg.channels.feedback}>` : "*(não definido)*", inline: true },

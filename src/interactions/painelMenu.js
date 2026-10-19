@@ -23,6 +23,7 @@ import { handleOpenTextModal } from "./textConfig.js";
 import { buildStatusModeView } from "./statusConfig.js";
 import { refreshServerStatus } from "../services/serverStatus.js";
 import { handleOpenSuggestionConfigModal, publishSuggestionPanel } from "./suggestionConfig.js";
+import { handleSupportMenu, MENU_PREFIX as SUPPORT_MENU_PREFIX } from "./supportConfig.js";
 
 const CHANNEL_TIPO_LABELS = {
   ticket: "🎫 Canal de Ticket",
@@ -519,6 +520,10 @@ export async function handleMenuSelect(interaction) {
 
   if (value === "status_definir") {
     return interaction.update(await buildStatusModeView(interaction.client));
+  }
+
+  if (value.startsWith(SUPPORT_MENU_PREFIX)) {
+    return handleSupportMenu(interaction, value);
   }
 
   if (value === "sugestao_config") {

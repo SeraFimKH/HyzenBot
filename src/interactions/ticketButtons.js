@@ -10,7 +10,7 @@ import {
 } from "discord.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { getTicket, createTicket, updateTicket, deleteTicket, findOpenTicketByUser } from "../database/tickets.js";
-import { isStaff } from "../utils/permissions.js";
+import { canSupport, SupportPermission, ticketChannelRoles, ticketPingRoles } from "../utils/supportPermissions.js";
 import { baseEmbed, errorEmbed, successEmbed } from "../utils/embeds.js";
 import { buildTranscriptAttachment } from "../utils/ticketTranscript.js";
 import { formatDuration } from "../utils/format.js";
@@ -62,12 +62,10 @@ function ticketInfoFields(ticket, statusValue) {
   return fields;
 }
 
-function getStaffAndAdminRoleIds(cfg) {
-  return [...new Set([...cfg.adminRoles, ...cfg.staffRoles])];
-}
-
-function buildPermissionOverwrites(guild, cfg, openerId) {
-  const staffAndAdminRoles = getStaffAndAdminRoleIds(cfg);
+// The ticket's channel (and its voice channel): the member who opened it, the bot, and the roles that see that type's
+// tickets — admins, its team, and the roles given closing or Pix (see utils/supportPermissions.js).
+function buildPermissionOverwrites(guild, cfg, openerId, type) {
+  const staffAndAdminRoles = ticketChannelRoles(cfg, type);
   const memberPerms = [
     PermissionFlagsBits.ViewChannel,
     PermissionFlagsBits.SendMessages,
@@ -98,7 +96,8 @@ async function createTicketChannel(interaction, cfg, ticketType, { reason, descr
     return replyOrEdit(interaction, errorEmbed("A categoria de tickets configurada não foi encontrada. Peça a um administrador para configurá-la novamente."));
   }
 
-  const permissionOverwrites = buildPermissionOverwrites(interaction.guild, cfg, interaction.user.id);
+  const typeText = ticketType ? `${ticketType.emoji ? `${ticketType.emoji} ` : ""}${ticketType.label}` : null;
+  const permissionOverwrites = buildPermissionOverwrites(interaction.guild, cfg, interaction.user.id, typeText);
   const safeName = interaction.user.username.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20) || "usuario";
   const typeSlug = ticketType ? `-${ticketType.label.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "")}` : "";
 
@@ -117,7 +116,6 @@ async function createTicketChannel(interaction, cfg, ticketType, { reason, descr
     permissionOverwrites,
   });
 
-  const typeText = ticketType ? `${ticketType.emoji ? `${ticketType.emoji} ` : ""}${ticketType.label}` : null;
   createTicket(channel.id, { guildId: interaction.guildId, openerId: interaction.user.id, type: typeText, number, reason, description });
 
   const withinHours = isWithinSupportHours();
@@ -136,7 +134,7 @@ async function createTicketChannel(interaction, cfg, ticketType, { reason, descr
     );
 
   const pingContent = withinHours
-    ? [`<@${interaction.user.id}>`, ...getStaffAndAdminRoleIds(cfg).map((roleId) => `<@&${roleId}>`)].join(" ")
+    ? [`<@${interaction.user.id}>`, ...ticketPingRoles(cfg, typeText).map((roleId) => `<@&${roleId}>`)].join(" ")
     : `<@${interaction.user.id}>`;
 
   await channel.send({
@@ -221,7 +219,7 @@ export async function handleClaim(interaction) {
     return interaction.reply({ embeds: [errorEmbed("Este canal não é um ticket ativo.")], ephemeral: true });
   }
 
-  if (!isStaff(interaction.member, cfg)) {
+  if (!canSupport(interaction.member, cfg, SupportPermission.ATTEND, ticket.type)) {
     return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para assumir tickets.")], ephemeral: true });
   }
 
@@ -252,7 +250,7 @@ export async function handleCreateVoice(interaction) {
     return interaction.reply({ embeds: [errorEmbed("Este canal não é um ticket ativo.")], ephemeral: true });
   }
 
-  if (!isStaff(interaction.member, cfg)) {
+  if (!canSupport(interaction.member, cfg, SupportPermission.ATTEND, ticket.type)) {
     return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para criar o canal de voz.")], ephemeral: true });
   }
 
@@ -267,7 +265,7 @@ export async function handleCreateVoice(interaction) {
     return interaction.editReply({ embeds: [errorEmbed("A categoria de tickets configurada não foi encontrada.")] });
   }
 
-  const permissionOverwrites = buildPermissionOverwrites(interaction.guild, cfg, ticket.openerId);
+  const permissionOverwrites = buildPermissionOverwrites(interaction.guild, cfg, ticket.openerId, ticket.type);
   const baseName = interaction.channel.name.replace(/^ticket-?/, "") || interaction.channel.name;
 
   const voiceChannel = await interaction.guild.channels.create({
@@ -300,8 +298,8 @@ export async function handleClose(interaction) {
     return interaction.reply({ embeds: [errorEmbed("Este canal não é um ticket ativo.")], ephemeral: true });
   }
 
-  if (!isStaff(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Apenas a staff pode fechar o ticket.")], ephemeral: true });
+  if (!canSupport(interaction.member, cfg, SupportPermission.CLOSE, ticket.type)) {
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para fechar tickets.")], ephemeral: true });
   }
 
   const embed = EmbedBuilder.from(interaction.message.embeds[0])

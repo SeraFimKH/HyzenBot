@@ -14,6 +14,7 @@ import * as textConfig from "../interactions/textConfig.js";
 import * as statusConfig from "../interactions/statusConfig.js";
 import * as suggestionButtons from "../interactions/suggestionButtons.js";
 import * as suggestionConfig from "../interactions/suggestionConfig.js";
+import * as supportConfig from "../interactions/supportConfig.js";
 import { PANEL_BUTTON_ID as SUGGESTION_BUTTON_ID, REASON_MODAL_PREFIX, STATUS_BUTTON_PREFIX, SUGGESTION_MODAL_ID } from "../utils/suggestionViews.js";
 import { handleAuthStart, handleAuthCheck } from "../interactions/authButtons.js";
 
@@ -91,6 +92,7 @@ export async function execute(interaction) {
       // ticket_type_select: o menu antigo, que aparecia só para quem clicava no botão.
       if (interaction.customId === "ticket_open_select" || interaction.customId === "ticket_type_select") return await ticketButtons.handleTypeSelected(interaction);
       if (interaction.customId === "painel_tipoticket_remover") return await painelMenu.handleTipoTicketRemoveSelect(interaction);
+      if (interaction.customId === supportConfig.TYPE_SELECT_ID) return await supportConfig.handleTypeSelect(interaction);
       return;
     }
 
@@ -101,6 +103,7 @@ export async function execute(interaction) {
 
     if (interaction.isRoleSelectMenu()) {
       if (interaction.customId.startsWith("painel_role_")) return await painelMenu.handleRoleSelect(interaction);
+      if (interaction.customId.startsWith(supportConfig.ROLE_SELECT_PREFIX)) return await supportConfig.handleRoleSelect(interaction);
       return;
     }
   } catch (err) {
