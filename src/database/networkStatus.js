@@ -20,6 +20,8 @@ const DISCORD_ORIGIN = "Discord";
 const DEFAULT_STATUS = Object.freeze({ mode: StatusMode.AUTO, reason: null, changedBy: null, changedAt: null });
 
 let lastKnown = DEFAULT_STATUS;
+// Whether the last read worked — when it didn't, the mode the bot has is a guess (see isNetworkStatusFresh).
+let lastReadOk = false;
 // Which read failure was already logged ("table" or "query") — this is polled every few seconds, one line is enough.
 let loggedFailure = null;
 
@@ -39,6 +41,12 @@ export class StatusTableMissingError extends Error {
   }
 }
 
+// False after a failed read: the status getNetworkStatus gave is the last one known (AUTO before any read worked), so
+// nothing should be thrown away because of it.
+export function isNetworkStatusFresh() {
+  return lastReadOk;
+}
+
 // The last status read or written, without touching the database — for places that can't wait on a query.
 export function getCachedNetworkStatus() {
   return lastKnown;
@@ -49,8 +57,10 @@ export async function getNetworkStatus() {
   try {
     const result = await pool.query("SELECT mode, reason, changed_by, changed_at FROM hyzen_network_status WHERE id = $1", [ROW_ID]);
     lastKnown = result.rows[0] ? mapRow(result.rows[0]) : DEFAULT_STATUS;
+    lastReadOk = true;
     loggedFailure = null;
   } catch (err) {
+    lastReadOk = false;
     const failure = err.code === UNDEFINED_TABLE ? "table" : "query";
     if (loggedFailure !== failure) {
       loggedFailure = failure;
@@ -83,6 +93,7 @@ export async function setNetworkStatus(mode, reason, changedBy) {
   }
 
   lastKnown = mapRow(result.rows[0]);
+  lastReadOk = true;
   await publishNetworkStatus({ mode, server: DISCORD_ORIGIN });
   return lastKnown;
 }

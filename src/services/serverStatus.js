@@ -3,7 +3,7 @@ import Redis from "ioredis";
 import { config } from "../config.js";
 import { JsonStore } from "../database/jsonStore.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
-import { getNetworkStatus, setNetworkStatus, StatusMode } from "../database/networkStatus.js";
+import { getNetworkStatus, isNetworkStatusFresh, setNetworkStatus, StatusMode } from "../database/networkStatus.js";
 import { getServerHeartbeats } from "../database/redis.js";
 import { pingBedrock } from "../utils/bedrockPing.js";
 import { resolveStatus, ServerState } from "../utils/serverState.js";
@@ -17,6 +17,8 @@ const PANEL_REFRESH_MS = 60_000;
 const OUTAGE_CONFIRMATIONS = 2;
 const DEFAULT_BEDROCK_PORT = 19132;
 const NETWORK_STATUS_CHANNEL = "hyzen:network-status";
+// The progress the staff gave the maintenance going on (/status progresso), kept in serverStatus.json.
+const PROGRESS_KEY = "maintenanceProgress";
 const UNKNOWN_MESSAGE = 10008;
 
 const PRESENCE_STATUS = {
@@ -53,6 +55,31 @@ export async function setStatusMode(client, mode, reason, changedBy) {
   missedPolls = OUTAGE_CONFIRMATIONS; // what the staff just chose is shown at once, no confirmation needed
   const status = await freshServerStatus(client);
   return { network, status };
+}
+
+/**
+ * The progress of the maintenance going on (/status progresso:40% etapa:...), shown on the panel, in the bot's
+ * presence and in /ip. progress or stage left out (null) keep what was there; stage "" clears it. Only while the
+ * server is in maintenance — the next maintenance starts from zero again (see refresh).
+ * Resolves to { ok: true, status } or { ok: false, reason }.
+ */
+export async function setMaintenanceProgress(client, { progress, stage, updatedBy }) {
+  const network = await getNetworkStatus();
+  if (network.mode !== StatusMode.MAINTENANCE && current?.state !== ServerState.MAINTENANCE) {
+    return {
+      ok: false,
+      reason: "O servidor não está em manutenção. Ligue a manutenção com `/status-definir modo:Manutenção` (ou `/manutencao on` no jogo) e depois dê o progresso.",
+    };
+  }
+  const previous = store.get(PROGRESS_KEY);
+  store.set(PROGRESS_KEY, {
+    progress: progress ?? previous?.progress ?? 0,
+    stage: stage === null ? previous?.stage ?? null : stage || null,
+    updatedBy,
+    updatedAt: Date.now(),
+  });
+  const status = await freshServerStatus(client);
+  return { ok: true, status };
 }
 
 // Turns a message the bot already posted (the reply of /status) into the status panel of that server: from now on
@@ -121,6 +148,12 @@ async function refresh(client) {
   const [network, heartbeats] = await Promise.all([getNetworkStatus(), getServerHeartbeats()]);
   logRedisState(heartbeats === null);
 
+  // A maintenance that ended takes its progress with it, so the next one starts from zero. Only on a read that
+  // worked: with the database unreachable, "not in maintenance" is just the bot's guess.
+  if (network.mode !== StatusMode.MAINTENANCE && isNetworkStatusFresh() && store.get(PROGRESS_KEY)) {
+    store.delete(PROGRESS_KEY);
+  }
+
   // The direct ping is the second opinion, asked only when no server is reporting in through Redis.
   let ping;
   if (!heartbeats?.length) {
@@ -149,7 +182,8 @@ async function refresh(client) {
     if (saved) console.log(`[serverStatus] ${saved.state} -> ${resolved.state}`);
   }
 
-  current = { ...resolved, since, checkedAt: now };
+  const maintenance = resolved.state === ServerState.MAINTENANCE ? store.get(PROGRESS_KEY) ?? null : null;
+  current = { ...resolved, maintenance, since, checkedAt: now };
 
   if (client.isReady()) {
     updatePresence(client, current);
