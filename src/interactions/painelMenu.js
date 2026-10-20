@@ -27,6 +27,7 @@ import { handleSupportMenu, MENU_PREFIX as SUPPORT_MENU_PREFIX } from "./support
 import { buildAdminGuildView, buildLogChannelView } from "./adminGuildConfig.js";
 import { handleBetaMenu, MENU_VALUES as BETA_MENU_VALUES } from "./betaConfig.js";
 import { isLogChannelKey } from "../utils/linkedGuilds.js";
+import { publishBetaRegistrationPanel } from "../services/betaRegistrationPanel.js";
 
 const CHANNEL_TIPO_LABELS = {
   ticket: "🎫 Canal de Ticket",
@@ -45,6 +46,7 @@ const CHANNEL_TIPO_LABELS = {
   winLog: "🏆 Canal de Logs de Vitória",
   status: "📊 Canal do Painel de Status",
   sugestoes: "💡 Canal de Sugestões",
+  preRegistro: "📝 Canal do Pré-registro",
 };
 
 const CARGO_TIPO_LABELS = {
@@ -478,6 +480,12 @@ export async function handleMenuSelect(interaction) {
     return handleBetaMenu(interaction, value);
   }
 
+  if (value === "publicar_preregistro") {
+    await interaction.deferUpdate();
+    const embed = await publishBetaRegistrationPanel(interaction.client, interaction.guildId);
+    return interaction.editReply({ embeds: [embed], components: [backRow()] });
+  }
+
   if (value === "categoria_ticket") {
     return interaction.update(buildChannelSelectView("categoria", cfg));
   }
@@ -597,6 +605,12 @@ export async function handleChannelSelect(interaction) {
   // O painel de sugestões vai para o canal novo na hora — e a staff vê se faltou alguma permissão.
   if (tipo === "sugestoes") {
     const embed = await publishSuggestionPanel(interaction.client, interaction.guildId);
+    await interaction.followUp({ embeds: [embed], ephemeral: true }).catch(() => {});
+  }
+
+  // O botão do pré-registro vai para o canal novo na hora (e sai do antigo).
+  if (tipo === "preRegistro") {
+    const embed = await publishBetaRegistrationPanel(interaction.client, interaction.guildId);
     await interaction.followUp({ embeds: [embed], ephemeral: true }).catch(() => {});
   }
 

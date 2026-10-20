@@ -15,6 +15,9 @@ export const TEXT_FIELDS = [
   { key: "sugestao_panel_titulo", label: "Título do painel de sugestões", group: "painel", style: "Short", maxLength: 100 },
   { key: "sugestao_panel_desc", label: "Descrição do painel de sugestões", group: "painel", style: "Paragraph", maxLength: 500 },
   { key: "sugestao_botao", label: 'Texto do botão "Enviar sugestão"', group: "painel", style: "Short", maxLength: 80 },
+  { key: "preregistro_panel_titulo", label: "Título do painel de pré-registro", group: "painel", style: "Short", maxLength: 100 },
+  { key: "preregistro_panel_desc", label: "Descrição do painel de pré-registro", group: "painel", style: "Paragraph", maxLength: 500 },
+  { key: "preregistro_botao", label: 'Texto do botão "Fazer pré-registro"', group: "painel", style: "Short", maxLength: 80 },
 
   // Mensagens
   { key: "ticket_boasvindas_aberto", label: "Boas-vindas do ticket (no horário)", group: "mensagem", style: "Paragraph", maxLength: 500 },
@@ -48,6 +51,10 @@ export const DEFAULT_TEXTS = {
   sugestao_panel_desc:
     "Tem uma ideia para deixar o servidor ainda melhor? Clique no botão abaixo e conte para a gente!\n\n🗳️ Cada sugestão ganha uma votação — vote ✅ ou ❌ e veja a porcentagem.\n💬 Discuta cada ideia no tópico dela.\n📌 A equipe marca cada uma como em análise, aprovada ou recusada — e avisa quem sugeriu.",
   sugestao_botao: "Enviar sugestão",
+  preregistro_panel_titulo: "🧪 Pré-registro Beta — {comunidade}",
+  preregistro_panel_desc:
+    "Quer testar o servidor antes de todo mundo? Clique no botão abaixo, coloque o seu **nick do Minecraft** e aguarde a equipe analisar o seu pedido.\n\n📬 A resposta chega no seu privado — deixe a DM aberta.\n✅ Aprovado, você entra no servidor durante a manutenção e ganha a tag de beta.",
+  preregistro_botao: "Fazer pré-registro",
 
   ticket_boasvindas_aberto:
     "**Nossa equipe já foi notificada e vai te responder em breve.** Descreva sua dúvida ou problema com o máximo de detalhes possível.",

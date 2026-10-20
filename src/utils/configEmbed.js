@@ -18,6 +18,8 @@ export const CHANNEL_LABELS = {
   status: "📊 Canal do painel de status",
   sugestoes: "💡 Canal de sugestões",
   sugestoesLog: "🗳️ Canal de logs de sugestões",
+  preRegistro: "📝 Canal do pré-registro",
+  preRegistroAprovacao: "🛂 Canal de aprovação do pré-registro",
 };
 
 const channelOrNone = (id) => (id ? `<#${id}>` : "*(não definido)*");
@@ -104,10 +106,11 @@ export function buildConfigSummaryEmbed(cfg, context = null) {
       },
       { name: "🔗 Servidor administrativo", value: adminGuildText, inline: true },
       {
-        name: "📋 Canais de log",
+        name: "📋 Canais da equipe (logs e aprovações)",
         value: LOG_CHANNEL_KEYS.map((key) => `${CHANNEL_LABELS[key]}: ${logChannel(key)}`).join("\n").slice(0, 1024),
       },
       { name: CHANNEL_LABELS.status, value: channelOrNone(cfg.channels.status), inline: true },
+      { name: CHANNEL_LABELS.preRegistro, value: channelOrNone(cfg.channels.preRegistro), inline: true },
       {
         name: CHANNEL_LABELS.sugestoes,
         value: cfg.channels.sugestoes

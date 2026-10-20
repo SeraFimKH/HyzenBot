@@ -18,6 +18,8 @@ import * as supportConfig from "../interactions/supportConfig.js";
 import * as adminGuildConfig from "../interactions/adminGuildConfig.js";
 import * as betaConfig from "../interactions/betaConfig.js";
 import { BETA_CLOSE_BUTTON_ID, BETA_OPEN_BUTTON_ID } from "../utils/betaViews.js";
+import * as betaRegistration from "../interactions/betaRegistration.js";
+import * as preRegistration from "../utils/betaRegistrationViews.js";
 import { PANEL_BUTTON_ID as SUGGESTION_BUTTON_ID, REASON_MODAL_PREFIX, STATUS_BUTTON_PREFIX, SUGGESTION_MODAL_ID } from "../utils/suggestionViews.js";
 import { handleAuthStart, handleAuthCheck } from "../interactions/authButtons.js";
 
@@ -64,6 +66,9 @@ export async function execute(interaction) {
       if (customId === adminGuildConfig.ADMIN_GUILD_UNLINK_ID) return await adminGuildConfig.handleAdminGuildUnlink(interaction);
       if (customId.startsWith(adminGuildConfig.REMOTE_PAGE_PREFIX)) return await adminGuildConfig.handleRemoteChannelPage(interaction);
       if (customId === BETA_OPEN_BUTTON_ID || customId === BETA_CLOSE_BUTTON_ID) return await betaConfig.handleBetaAccessButton(interaction);
+      if (customId === preRegistration.PANEL_BUTTON_ID) return await betaRegistration.handleOpen(interaction);
+      if (customId.startsWith(preRegistration.APPROVE_PREFIX)) return await betaRegistration.handleApprove(interaction);
+      if (customId.startsWith(preRegistration.REJECT_PREFIX)) return await betaRegistration.handleReject(interaction);
       if (customId === "auth:start") return await handleAuthStart(interaction);
       if (customId === "auth:check") return await handleAuthCheck(interaction);
       return;
@@ -89,6 +94,8 @@ export async function execute(interaction) {
       if (interaction.customId === SUGGESTION_MODAL_ID) return await suggestionButtons.handleSuggestionModalSubmit(interaction);
       if (interaction.customId.startsWith(REASON_MODAL_PREFIX)) return await suggestionButtons.handleReasonModalSubmit(interaction);
       if (interaction.customId === suggestionConfig.CONFIG_MODAL_ID) return await suggestionConfig.handleSuggestionConfigModalSubmit(interaction);
+      if (interaction.customId === preRegistration.MODAL_ID) return await betaRegistration.handleModalSubmit(interaction);
+      if (interaction.customId.startsWith(preRegistration.REASON_MODAL_PREFIX)) return await betaRegistration.handleReasonSubmit(interaction);
       return;
     }
 

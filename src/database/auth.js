@@ -40,6 +40,15 @@ export async function findLinkByDiscordId(discordId) {
   return result.rows[0] ?? null;
 }
 
+// The game name of the account this Discord user linked with /verificar, or null when they never linked one.
+export async function findLinkedPlayerName(discordId) {
+  const result = await pool.query(
+    "SELECT p.name FROM hyzen_auth_links l JOIN hyzen_players p ON p.id = l.player_id WHERE l.discord_id = $1",
+    [discordId],
+  );
+  return result.rows[0]?.name ?? null;
+}
+
 // Reverse of findLinkByDiscordId — the auth table is only indexed for discord_id → player_id, so a lookup by
 // player_id (used to DM a punished player, or to show their linked account in /infocompleta) needs its own
 // query rather than a cache-friendly index hit.

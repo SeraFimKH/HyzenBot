@@ -6,21 +6,22 @@ import { logGuildIds } from "./linkedGuilds.js";
 // Posts to whichever log channel the server configured for that key (/config canal or /painel) — in the server itself
 // or in its admin server (/painel → Servidor Administrativo). Silently does nothing when the channel isn't set or the
 // bot can't post there: every log channel in this bot is optional. A channel in any other server is refused, should a
-// stale setting point there after the admin server changed.
+// stale setting point there after the admin server changed. Resolves to the message posted, or null.
 export async function postLog(client, guildId, channelKey, payload) {
   const cfg = getGuildConfig(guildId);
   const channelId = cfg.channels[channelKey];
-  if (!channelId) return;
-  await sendLog(client, channelId, logGuildIds(guildId, cfg), channelKey, payload);
+  if (!channelId) return null;
+  return sendLog(client, channelId, logGuildIds(guildId, cfg), channelKey, payload);
 }
 
 async function sendLog(client, channelId, allowedGuildIds, channelKey, payload) {
   try {
     const channel = await client.channels.fetch(channelId);
-    if (!channel?.isTextBased() || !allowedGuildIds.includes(channel.guildId)) return;
-    await channel.send(payload);
+    if (!channel?.isTextBased() || !allowedGuildIds.includes(channel.guildId)) return null;
+    return await channel.send(payload);
   } catch (err) {
     console.error(`[staffLog] failed to post to ${channelKey}`, err.message);
+    return null;
   }
 }
 

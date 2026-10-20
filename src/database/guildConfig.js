@@ -69,9 +69,14 @@ function defaultConfig() {
       status: null,
       sugestoes: null,
       sugestoesLog: null,
+      // /painel → Servidor do Jogo: the pre-registration panel, and where the staff approves the requests.
+      preRegistro: null,
+      preRegistroAprovacao: null,
     },
     // /painel → Servidor Administrativo: another Discord server the log channels may point at (utils/linkedGuilds.js).
     adminGuildId: null,
+    preRegistroPanelChannelId: null,
+    preRegistroPanelMessageId: null,
     ticketCategoryId: null,
     ticketPanelMessageId: null,
     ticketCounter: 0,
