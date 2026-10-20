@@ -22,6 +22,39 @@ export function accessChangedText(open, status) {
   );
 }
 
+// A field's lines, cut to fit Discord's 1024 characters with the rest counted.
+function fieldLines(lines, empty) {
+  if (!lines.length) return empty;
+  const shown = [];
+  let length = 0;
+  for (const line of lines) {
+    if (length + line.length + 40 > 1024) break;
+    shown.push(line);
+    length += line.length + 1;
+  }
+  if (shown.length < lines.length) shown.push(`*… e mais ${lines.length - shown.length}.*`);
+  return shown.join("\n");
+}
+
+const relative = (ms) => (ms ? ` · <t:${Math.floor(ms / 1000)}:R>` : "");
+
+// /beta lista and /painel → Servidor do Jogo → Ver beta testers: everyone who is a beta tester (the tag in the game,
+// or approved and not joined yet) and the requests still waiting.
+export function buildBetaOverviewEmbed(cfg, { open, tagKey, tagged, waiting, pending }) {
+  const tagLines = tagged.map((t) => `• **${t.name}** — ${t.discordId ? `<@${t.discordId}> ✅` : "⚠️ sem Discord vinculado"}`);
+  const waitingLines = waiting.map((w) => `• **${w.name}**${w.discordId ? ` — <@${w.discordId}>` : ""}${w.grantedBy ? ` · aprovado por ${w.grantedBy}` : ""}${relative(w.grantedAt)}`);
+  const pendingLines = pending.map((r) => `• **${r.name}** — <@${r.discordId}> · pedido #${r.number}${relative(r.requestedAt)}`);
+  return baseEmbed(cfg.communityName)
+    .setTitle(`🧪 Beta testers (${tagged.length + waiting.length})`)
+    .setDescription(`Entrada durante a manutenção: ${accessLabel(open)} · tag de beta no jogo: \`${tagKey}\``)
+    .addFields(
+      { name: `🎮 Com a tag no jogo (${tagged.length})`, value: fieldLines(tagLines, "*(ninguém)*") },
+      { name: `⏳ Aprovados, ainda não entraram no servidor (${waiting.length})`, value: fieldLines(waitingLines, "*(ninguém)*") },
+      { name: `📝 Pedidos de pré-registro aguardando (${pending.length})`, value: fieldLines(pendingLines, "*(nenhum)*") },
+    )
+    .setFooter({ text: `${cfg.communityName} · /beta adicionar · /beta remover · /beta acesso` });
+}
+
 export function buildBetaAccessEmbed(cfg, open, notice = null) {
   return baseEmbed(cfg.communityName)
     .setTitle("🧪 Entrada dos beta testers")

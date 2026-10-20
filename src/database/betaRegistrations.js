@@ -10,7 +10,12 @@ export const RegistrationStatus = {
   PENDING: "PENDING",
   APPROVED: "APPROVED",
   REJECTED: "REJECTED",
+  // Approved, then taken out of the beta testers (/beta remover, or the card's button).
+  REMOVED: "REMOVED",
 };
+
+// Still counting: waiting for an answer, or approved. Refused or removed, the member may ask again.
+const isActive = (r) => r.status === RegistrationStatus.PENDING || r.status === RegistrationStatus.APPROVED;
 
 function guildData(guildId) {
   const data = store.get(guildId) || {};
@@ -21,15 +26,26 @@ export function getRegistration(guildId, number) {
   return guildData(guildId).items[number] || null;
 }
 
-// A request of this member still counting: waiting for an answer, or approved.
 export function findActiveRegistration(guildId, discordId) {
-  return Object.values(guildData(guildId).items).find((r) => r.discordId === discordId && r.status !== RegistrationStatus.REJECTED) || null;
+  return Object.values(guildData(guildId).items).find((r) => r.discordId === discordId && isActive(r)) || null;
 }
 
 // The same name, asked for (or approved) by someone else.
 export function findRegistrationByName(guildId, name) {
   const key = name.toLowerCase();
-  return Object.values(guildData(guildId).items).find((r) => r.name.toLowerCase() === key && r.status !== RegistrationStatus.REJECTED) || null;
+  return Object.values(guildData(guildId).items).find((r) => r.name.toLowerCase() === key && isActive(r)) || null;
+}
+
+// Across every Discord server: [{ guildId, registration }] with this status (and this name, when given).
+export function findRegistrations(status, name = null) {
+  const key = name?.toLowerCase();
+  const found = [];
+  for (const [guildId, data] of Object.entries(store.all())) {
+    for (const registration of Object.values(data?.items || {})) {
+      if (registration.status === status && (!key || registration.name.toLowerCase() === key)) found.push({ guildId, registration });
+    }
+  }
+  return found;
 }
 
 // Takes the next number; the card it's posted in is added with updateRegistration (or the whole thing undone with

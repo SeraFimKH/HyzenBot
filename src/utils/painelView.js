@@ -128,6 +128,7 @@ const CATEGORIES = [
       { label: "Definir Status do Servidor", description: "Automático, online, manutenção ou offline", value: "status_definir", emoji: "🚦" },
       { label: "Canal do Painel de Status", description: "Onde o bot mantém o status e os jogadores online sempre atualizados", value: "canal_status", emoji: "📊" },
       { label: "Entrada dos Beta Testers", description: "Libera ou bloqueia, na manutenção, quem tem a tag de beta no jogo", value: "beta_acesso", emoji: "🧪" },
+      { label: "Ver beta testers", description: "Quem tem a tag, quem foi aprovado e os pedidos aguardando", value: "beta_lista", emoji: "📋" },
       { label: "Canal do Pré-registro", description: "Onde fica o botão para pedir para ser beta tester", value: "canal_preRegistro", emoji: "📝" },
       { label: "Canal de Aprovação do Pré-registro", description: "Onde a equipe aprova ou recusa os pedidos (pode ser no servidor admin)", value: "canal_preRegistroAprovacao", emoji: "🛂" },
       { label: "Publicar Painel de Pré-registro", description: "Posta o botão de novo no canal (depois de mudar os textos)", value: "publicar_preregistro", emoji: "📌" },

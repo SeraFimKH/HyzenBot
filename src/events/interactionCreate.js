@@ -69,6 +69,7 @@ export async function execute(interaction) {
       if (customId === preRegistration.PANEL_BUTTON_ID) return await betaRegistration.handleOpen(interaction);
       if (customId.startsWith(preRegistration.APPROVE_PREFIX)) return await betaRegistration.handleApprove(interaction);
       if (customId.startsWith(preRegistration.REJECT_PREFIX)) return await betaRegistration.handleReject(interaction);
+      if (customId.startsWith(preRegistration.REMOVE_PREFIX)) return await betaRegistration.handleRemove(interaction);
       if (customId === "auth:start") return await handleAuthStart(interaction);
       if (customId === "auth:check") return await handleAuthCheck(interaction);
       return;
@@ -96,6 +97,7 @@ export async function execute(interaction) {
       if (interaction.customId === suggestionConfig.CONFIG_MODAL_ID) return await suggestionConfig.handleSuggestionConfigModalSubmit(interaction);
       if (interaction.customId === preRegistration.MODAL_ID) return await betaRegistration.handleModalSubmit(interaction);
       if (interaction.customId.startsWith(preRegistration.REASON_MODAL_PREFIX)) return await betaRegistration.handleReasonSubmit(interaction);
+      if (interaction.customId.startsWith(preRegistration.REMOVE_MODAL_PREFIX)) return await betaRegistration.handleRemoveSubmit(interaction);
       return;
     }
 

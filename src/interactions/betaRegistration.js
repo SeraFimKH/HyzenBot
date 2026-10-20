@@ -19,10 +19,14 @@ import {
   buildRegistrationCard,
   buildRegistrationDm,
   buildRegistrationModal,
+  buildRemoveReasonModal,
   parseRegistrationId,
   REASON_MODAL_PREFIX,
   REJECT_PREFIX,
+  REMOVE_MODAL_PREFIX,
+  REMOVE_PREFIX,
 } from "../utils/betaRegistrationViews.js";
+import { removeBetaTester } from "../services/betaTesters.js";
 import { errorEmbed, successEmbed } from "../utils/embeds.js";
 import { isAdmin } from "../utils/permissions.js";
 import { postLog } from "../utils/staffLog.js";
@@ -30,7 +34,8 @@ import { postLog } from "../utils/staffLog.js";
 // The pre-registration: a member presses the panel's button, types the nick, and the request goes to the approval channel
 // (/painel → Servidor do Jogo; it can be in the admin server). An admin there approves — the nick becomes a beta tester:
 // it gets in during the maintenance and the beta tag on joining (database/betaGrants.js) — or refuses with a reason.
-// The member hears it in a DM either way.
+// The member hears it in a DM either way (approved without the Discord linked, also asked to link it). An approved
+// card keeps a Remover button, which takes them out again (services/betaTesters.js, also /beta remover).
 
 // Requests being answered right now: two admins clicking at once don't both answer.
 const answering = new Set();
@@ -100,17 +105,44 @@ export async function handleModalSubmit(interaction) {
   });
 }
 
-// What every answer checks first: an admin of the server the card is in, and a request still waiting.
-async function openRequest(interaction, prefix) {
+// What every button on a card checks first: an admin of the server the card is in, and the request still where the
+// button expects it (waiting, for Aprovar / Recusar; approved, for Remover).
+async function openRequest(interaction, prefix, expected = RegistrationStatus.PENDING) {
   const { guildId, number } = parseRegistrationId(interaction.customId, prefix);
   const reply = (embed) => interaction.reply({ embeds: [embed], ephemeral: true }).then(() => null);
-  if (!isAdmin(interaction.member, getGuildConfig(interaction.guildId))) return reply(errorEmbed("Só os administradores aprovam ou recusam o pré-registro."));
+  if (!isAdmin(interaction.member, getGuildConfig(interaction.guildId))) return reply(errorEmbed("Só os administradores cuidam do pré-registro."));
   const registration = getRegistration(guildId, number);
   if (!registration) return reply(errorEmbed(`Não encontrei o pré-registro #${number}.`));
-  if (registration.status !== RegistrationStatus.PENDING || answering.has(`${guildId}:${number}`)) {
-    return reply(errorEmbed(`O pré-registro #${number} já foi respondido.`));
+  if (registration.status !== expected || answering.has(`${guildId}:${number}`)) {
+    return reply(errorEmbed(expected === RegistrationStatus.PENDING ? `O pré-registro #${number} já foi respondido.` : `**${registration.name}** já não está mais aprovado.`));
   }
   return { guildId, number, registration };
+}
+
+// Remover dos beta testers, on an approved card: asks for the reason, then takes the tag and the approval away
+// (services/betaTesters.js), which also redraws the card.
+export async function handleRemove(interaction) {
+  const request = await openRequest(interaction, REMOVE_PREFIX, RegistrationStatus.APPROVED);
+  if (!request) return;
+  await interaction.showModal(buildRemoveReasonModal(request.guildId, request.number, request.registration.name));
+}
+
+export async function handleRemoveSubmit(interaction) {
+  const request = await openRequest(interaction, REMOVE_MODAL_PREFIX, RegistrationStatus.APPROVED);
+  if (!request) return;
+  const reason = interaction.fields.getTextInputValue("motivo").trim() || null;
+  await oneAnswerAtATime(request.guildId, request.number, async () => {
+    await interaction.deferUpdate();
+    try {
+      const result = await removeBetaTester(interaction.client, interaction.guildId, { name: request.registration.name, staffId: interaction.user.id, reason });
+      if (result.tagFailed) {
+        await interaction.followUp({ embeds: [errorEmbed("Removido, mas não consegui tirar a tag de beta no jogo agora (Redis fora do ar) — tire com `/tagadmin revoke` no jogo.")], ephemeral: true });
+      }
+    } catch (err) {
+      if (!(err instanceof StatusTableMissingError)) console.error("[betaRegistration] failed to remove", err);
+      await interaction.followUp({ embeds: [errorEmbed("Não consegui tirar dos beta testers agora. Tente de novo em instantes.")], ephemeral: true });
+    }
+  });
 }
 
 export async function handleApprove(interaction) {
@@ -161,7 +193,8 @@ async function oneAnswerAtATime(guildId, number, work) {
   }
 }
 
-// Records the answer, tells the member in a DM, and edits the card (no buttons anymore). The interaction was deferred.
+// Records the answer, tells the member in a DM, and edits the card (Remover, once approved). The interaction was
+// deferred. Approved without the Discord linked to the game, the DM also says to link it.
 async function answer(interaction, guildId, number, status, reason) {
   const cfg = getGuildConfig(guildId);
   let registration = updateRegistration(guildId, number, (r) => {
@@ -169,11 +202,13 @@ async function answer(interaction, guildId, number, status, reason) {
     r.decision = { staffId: interaction.user.id, at: Date.now(), reason, dmSent: null };
   });
 
-  const betaOpen = status === RegistrationStatus.APPROVED ? await isBetaAccessOpen().catch(() => true) : null;
+  const approved = status === RegistrationStatus.APPROVED;
+  const betaOpen = approved ? await isBetaAccessOpen().catch(() => true) : null;
+  const verified = approved ? Boolean(await findLinkedPlayerName(registration.discordId).catch(() => null)) : null;
   const member = await interaction.client.users.fetch(registration.discordId).catch(() => null);
   const dmSent = member
     ? await member
-        .send({ embeds: [buildRegistrationDm(cfg, registration, betaOpen)] })
+        .send({ embeds: [buildRegistrationDm(cfg, registration, betaOpen, verified)] })
         .then(() => true)
         .catch(() => false)
     : false;
@@ -182,5 +217,9 @@ async function answer(interaction, guildId, number, status, reason) {
   });
 
   const originName = interaction.client.guilds.cache.get(guildId)?.name ?? "?";
-  await interaction.editReply({ embeds: [buildRegistrationCard(cfg, registration, originName)], components: [], allowedMentions: { parse: [] } });
+  await interaction.editReply({
+    embeds: [buildRegistrationCard(cfg, registration, originName)],
+    components: buildRegistrationButtons(guildId, registration),
+    allowedMentions: { parse: [] },
+  });
 }

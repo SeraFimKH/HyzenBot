@@ -1,12 +1,13 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { getNetworkStatus, isBetaAccessOpen, setBetaAccessOpen, StatusTableMissingError } from "../database/networkStatus.js";
-import { accessChangedText, BETA_OPEN_BUTTON_ID, BETA_TABLE_MISSING, buildBetaAccessView } from "../utils/betaViews.js";
+import { accessChangedText, BETA_OPEN_BUTTON_ID, BETA_TABLE_MISSING, buildBetaAccessView, buildBetaOverviewEmbed } from "../utils/betaViews.js";
+import { getBetaOverview } from "../services/betaTesters.js";
 import { errorEmbed } from "../utils/embeds.js";
 import { isAdmin } from "../utils/permissions.js";
 
-// /painel → Servidor do Jogo → Entrada dos Beta Testers: the switch, with a button each way.
-export const MENU_VALUES = ["beta_acesso"];
+// /painel → Servidor do Jogo: Entrada dos Beta Testers (the switch, with a button each way) and Ver beta testers.
+export const MENU_VALUES = ["beta_acesso", "beta_lista"];
 
 function backButton() {
   return new ButtonBuilder().setCustomId("painel_back").setLabel("⬅️ Voltar ao painel").setStyle(ButtonStyle.Secondary);
@@ -20,10 +21,14 @@ function databaseError(err) {
   return errorEmbed("Não consegui acessar o banco de dados. Tente de novo em instantes.");
 }
 
-export async function handleBetaMenu(interaction) {
+export async function handleBetaMenu(interaction, value) {
   await interaction.deferUpdate();
+  const cfg = getGuildConfig(interaction.guildId);
   try {
-    return await interaction.editReply(buildBetaAccessView(getGuildConfig(interaction.guildId), await isBetaAccessOpen(), backButton()));
+    if (value === "beta_lista") {
+      return await interaction.editReply({ embeds: [buildBetaOverviewEmbed(cfg, await getBetaOverview())], components: [backRow()], allowedMentions: { parse: [] } });
+    }
+    return await interaction.editReply(buildBetaAccessView(cfg, await isBetaAccessOpen(), backButton()));
   } catch (err) {
     return interaction.editReply({ embeds: [databaseError(err)], components: [backRow()] });
   }

@@ -18,7 +18,11 @@ const STATUS_VIEW = {
   [RegistrationStatus.PENDING]: { emoji: "⏳", label: "Aguardando aprovação", color: 0xfaa61a },
   [RegistrationStatus.APPROVED]: { emoji: "✅", label: "Aprovado", color: 0x57f287 },
   [RegistrationStatus.REJECTED]: { emoji: "❌", label: "Recusado", color: 0xed4245 },
+  [RegistrationStatus.REMOVED]: { emoji: "🗑️", label: "Removido dos beta testers", color: 0x99aab5 },
 };
+
+export const REMOVE_PREFIX = "prereg_rm:";
+export const REMOVE_MODAL_PREFIX = "prereg_rmmotivo:";
 
 const quote = (text) => `> ${text.replace(/\n/g, "\n> ")}`;
 const relative = (ms) => `<t:${Math.floor(ms / 1000)}:R>`;
@@ -72,22 +76,50 @@ export function buildRegistrationCard(cfg, registration, originName) {
 
   const decision = registration.decision;
   if (decision) {
-    embed.addFields({ name: registration.status === RegistrationStatus.APPROVED ? "🛡️ Aprovado por" : "🛡️ Recusado por", value: `<@${decision.staffId}> · ${relative(decision.at)}` });
+    embed.addFields({ name: registration.status === RegistrationStatus.REJECTED ? "🛡️ Recusado por" : "🛡️ Aprovado por", value: `<@${decision.staffId}> · ${relative(decision.at)}` });
     if (decision.reason) embed.addFields({ name: "💬 Motivo", value: quote(decision.reason).slice(0, 1024) });
     if (decision.dmSent === false) embed.addFields({ name: "📭 Aviso", value: "Não consegui avisar o membro no privado (DM fechada)." });
+  }
+  const removal = registration.removal;
+  if (removal) {
+    embed.addFields({ name: "🗑️ Removido por", value: `<@${removal.staffId}> · ${relative(removal.at)}` });
+    if (removal.reason) embed.addFields({ name: "💬 Motivo da remoção", value: quote(removal.reason).slice(0, 1024) });
   }
   return embed;
 }
 
+// Waiting: Aprovar / Recusar. Approved: Remover dos beta testers. Refused or removed: nothing.
 export function buildRegistrationButtons(guildId, registration) {
-  if (registration.status !== RegistrationStatus.PENDING) return [];
   const id = `${guildId}:${registration.number}`;
-  return [
-    new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`${APPROVE_PREFIX}${id}`).setLabel("Aprovar").setEmoji("✅").setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId(`${REJECT_PREFIX}${id}`).setLabel("Recusar").setEmoji("✖️").setStyle(ButtonStyle.Danger),
-    ),
-  ];
+  if (registration.status === RegistrationStatus.PENDING) {
+    return [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`${APPROVE_PREFIX}${id}`).setLabel("Aprovar").setEmoji("✅").setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId(`${REJECT_PREFIX}${id}`).setLabel("Recusar").setEmoji("✖️").setStyle(ButtonStyle.Danger),
+      ),
+    ];
+  }
+  if (registration.status === RegistrationStatus.APPROVED) {
+    return [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`${REMOVE_PREFIX}${id}`).setLabel("Remover dos beta testers").setEmoji("🗑️").setStyle(ButtonStyle.Secondary),
+      ),
+    ];
+  }
+  return [];
+}
+
+export function buildRemoveReasonModal(guildId, number, name) {
+  const reason = new TextInputBuilder()
+    .setCustomId("motivo")
+    .setLabel("Motivo (o membro recebe no privado)")
+    .setStyle(TextInputStyle.Paragraph)
+    .setMaxLength(REASON_MAX_LENGTH)
+    .setRequired(false);
+  return new ModalBuilder()
+    .setCustomId(`${REMOVE_MODAL_PREFIX}${guildId}:${number}`)
+    .setTitle(`Remover ${name} dos beta testers`.slice(0, 45))
+    .addComponents(new ActionRowBuilder().addComponents(reason));
 }
 
 export function buildReasonModal(guildId, number) {
@@ -103,19 +135,34 @@ export function buildReasonModal(guildId, number) {
     .addComponents(new ActionRowBuilder().addComponents(reason));
 }
 
-// The answer in the member's DM. betaOpen: whether the beta testers get in right now.
-export function buildRegistrationDm(cfg, registration, betaOpen) {
+// Approved, or added straight away by the staff. betaOpen: whether the beta testers get in right now; verified: whether
+// their Discord is already linked to the game — if not, they're told to, as the game will tell them when they join.
+export function buildWelcomeDm(cfg, name, betaOpen, verified, title = "✅ Você agora é beta tester!") {
+  const lines = [
+    `Bem-vindo(a) aos beta testers da **${cfg.communityName}**! Nick: **${name}**`,
+    "",
+    betaOpen
+      ? "Durante a manutenção você já pode entrar no servidor com esse nick."
+      : "A entrada dos beta testers está fechada agora — assim que a equipe liberar, você entra no servidor com esse nick durante a manutenção.",
+    "Na primeira vez que entrar, você ganha a tag de beta.",
+  ];
+  if (!verified) {
+    lines.push("", "📌 **Falta vincular a sua conta:** use `/verificar` aqui no Discord para pegar o código e digite `/verificar <código>` no jogo. Sem isso você não consegue usar `/tags`.");
+  }
+  return baseEmbed(cfg.communityName).setColor(STATUS_VIEW.APPROVED.color).setTitle(title).setDescription(lines.join("\n"));
+}
+
+export function buildRemovedDm(cfg, name, reason) {
+  return baseEmbed(cfg.communityName)
+    .setColor(STATUS_VIEW.REMOVED.color)
+    .setTitle("🗑️ Você saiu dos beta testers")
+    .setDescription(`O nick **${name}** não faz mais parte dos beta testers da **${cfg.communityName}**.${reason ? `\n\n${quote(reason)}` : ""}`);
+}
+
+// The answer in the member's DM.
+export function buildRegistrationDm(cfg, registration, betaOpen, verified) {
   if (registration.status === RegistrationStatus.APPROVED) {
-    return baseEmbed(cfg.communityName)
-      .setColor(STATUS_VIEW.APPROVED.color)
-      .setTitle("✅ Seu pré-registro foi aprovado!")
-      .setDescription(
-        `Bem-vindo(a) aos beta testers da **${cfg.communityName}**! Nick: **${registration.name}**\n\n` +
-          (betaOpen
-            ? "Durante a manutenção você já pode entrar no servidor com esse nick."
-            : "A entrada dos beta testers está fechada agora — assim que a equipe liberar, você entra no servidor com esse nick durante a manutenção.") +
-          "\nNa primeira vez que entrar, você ganha a tag de beta.",
-      );
+    return buildWelcomeDm(cfg, registration.name, betaOpen, verified, "✅ Seu pré-registro foi aprovado!");
   }
   const reason = registration.decision?.reason;
   return baseEmbed(cfg.communityName)

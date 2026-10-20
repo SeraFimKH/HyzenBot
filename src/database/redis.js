@@ -94,6 +94,22 @@ export async function publishNetworkStatus(payload) {
   }
 }
 
+const TAG_ACTIONS_CHANNEL = "hyzen:tag-actions";
+
+// HyzenTags (RedisTagActionListener) owns hyzen_player_tags and takes every write from outside through this channel —
+// the same way the site gives and takes tags. Resolves to false when Redis didn't take the message: unlike the
+// channels above, nothing was saved anywhere else, so the caller has to say it didn't work.
+export async function publishTagAction(payload) {
+  try {
+    if (redis.status === "wait") await redis.connect();
+    await redis.publish(TAG_ACTIONS_CHANNEL, JSON.stringify(payload));
+    return true;
+  } catch (err) {
+    console.error("[redis] failed to publish tag action", err.message);
+    return false;
+  }
+}
+
 const STAFF_ACTIONS_CHANNEL = "hyzen:staff-actions";
 
 // HyzenStaff (Java) subscribes to this same channel (RedisStaffActionListener) so a punishment issued here
