@@ -22,7 +22,8 @@ export function buildTicketOpenRow(cfg) {
     const menu = new StringSelectMenuBuilder()
       .setCustomId(TICKET_TYPE_SELECT_ID)
       .setPlaceholder(getText(cfg, "ticket_select_placeholder"))
-      .addOptions(cfg.ticketTypes.map((type) => ({ label: type.label, value: type.label, emoji: type.emoji || undefined })));
+      // A descrição de cada tipo aparece em letra pequena embaixo do nome.
+      .addOptions(cfg.ticketTypes.map((type) => ({ label: type.label, value: type.label, emoji: type.emoji || undefined, description: type.description || undefined })));
     return new ActionRowBuilder().addComponents(menu);
   }
   return new ActionRowBuilder().addComponents(

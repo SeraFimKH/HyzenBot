@@ -14,7 +14,15 @@ import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { baseEmbed } from "../utils/embeds.js";
 import { buildMainPanel, findCategory } from "../utils/painelView.js";
 import { publishTicketPanel, refreshTicketPanel } from "../utils/ticketPanel.js";
-import { addTicketType, removeTicketTypes, MAX_TYPES } from "../utils/ticketTypes.js";
+import {
+  addTicketType,
+  describeTicketType,
+  editTicketType,
+  removeTicketTypes,
+  MAX_DESCRIPTION_LENGTH,
+  MAX_LABEL_LENGTH,
+  MAX_TYPES,
+} from "../utils/ticketTypes.js";
 import { handleOpenMpTokenModal } from "./pixButtons.js";
 import { handleOpenRulesModal } from "./rulesModal.js";
 import { publishRules } from "../utils/rulesPanel.js";
@@ -28,6 +36,10 @@ import { buildAdminGuildView, buildLogChannelView } from "./adminGuildConfig.js"
 import { handleBetaMenu, MENU_VALUES as BETA_MENU_VALUES } from "./betaConfig.js";
 import { isLogChannelKey } from "../utils/linkedGuilds.js";
 import { publishBetaRegistrationPanel } from "../services/betaRegistrationPanel.js";
+
+export const TIPO_TICKET_EDIT_SELECT_ID = "painel_tipoticket_editar";
+// painel_tipoticket_edit_modal:<posição do tipo na lista>
+export const TIPO_TICKET_EDIT_MODAL_PREFIX = "painel_tipoticket_edit_modal:";
 
 const CHANNEL_TIPO_LABELS = {
   ticket: "🎫 Canal de Ticket",
@@ -144,13 +156,19 @@ function buildTipoTicketView(cfg) {
     .setTitle("🗂️ Tipos de Suporte")
     .setDescription(
       cfg.ticketTypes.length
-        ? `Ao clicar em "Abrir Ticket", o membro escolhe um destes tipos:\n\n${cfg.ticketTypes.map((t, i) => `${i + 1}. ${t.emoji || "•"} ${t.label}`).join("\n")}`
+        ? `No painel de tickets, o membro escolhe um destes tipos (a descrição aparece embaixo do nome):\n\n${cfg.ticketTypes.map((t, i) => `${i + 1}. ${describeTicketType(t)}`).join("\n")}`
         : "Nenhum tipo cadastrado ainda — o ticket é criado direto, sem perguntar o tipo. Use o botão abaixo para adicionar (ex: Compra, Venda, Bug).",
     );
 
   const components = [];
 
   if (cfg.ticketTypes.length) {
+    const editMenu = new StringSelectMenuBuilder()
+      .setCustomId(TIPO_TICKET_EDIT_SELECT_ID)
+      .setPlaceholder("✏️ Editar nome, emoji ou descrição de um tipo...")
+      .addOptions(cfg.ticketTypes.map((t, i) => ({ label: t.label, value: String(i), emoji: t.emoji || undefined, description: t.description || "Sem descrição" })));
+    components.push(new ActionRowBuilder().addComponents(editMenu));
+
     const removeMenu = new StringSelectMenuBuilder()
       .setCustomId("painel_tipoticket_remover")
       .setPlaceholder("Selecione tipo(s) para remover...")
@@ -661,38 +679,82 @@ export async function handleTipoTicketRemoveSelect(interaction) {
   refreshTicketPanel(interaction.guild).catch((err) => console.error("[painelMenu] Falha ao atualizar o painel de tickets:", err.message));
 }
 
-export async function handleTipoTicketAddButton(interaction) {
-  const modal = new ModalBuilder().setCustomId("painel_tipoticket_add_modal").setTitle("Adicionar Tipo de Suporte");
-
+// Adicionar e editar usam o mesmo formulário; editando, ele já vem preenchido.
+function buildTicketTypeModal(customId, title, type = null) {
   const nomeInput = new TextInputBuilder()
     .setCustomId("nome")
     .setLabel("Nome (ex: Compra, Bug, Venda)")
     .setStyle(TextInputStyle.Short)
-    .setMaxLength(50)
+    .setMaxLength(MAX_LABEL_LENGTH)
     .setRequired(true);
-
   const emojiInput = new TextInputBuilder()
     .setCustomId("emoji")
     .setLabel("Emoji (opcional)")
     .setStyle(TextInputStyle.Short)
     .setMaxLength(8)
     .setRequired(false);
+  const descricaoInput = new TextInputBuilder()
+    .setCustomId("descricao")
+    .setLabel("Descrição (aparece embaixo do nome no menu)")
+    .setPlaceholder("Ex: Suporte para compras na loja!")
+    .setStyle(TextInputStyle.Short)
+    .setMaxLength(MAX_DESCRIPTION_LENGTH)
+    .setRequired(false);
+  if (type) {
+    nomeInput.setValue(type.label);
+    if (type.emoji) emojiInput.setValue(type.emoji);
+    if (type.description) descricaoInput.setValue(type.description);
+  }
 
-  modal.addComponents(
-    new ActionRowBuilder().addComponents(nomeInput),
-    new ActionRowBuilder().addComponents(emojiInput),
-  );
+  return new ModalBuilder()
+    .setCustomId(customId)
+    .setTitle(title)
+    .addComponents(
+      new ActionRowBuilder().addComponents(nomeInput),
+      new ActionRowBuilder().addComponents(emojiInput),
+      new ActionRowBuilder().addComponents(descricaoInput),
+    );
+}
 
-  await interaction.showModal(modal);
+export async function handleTipoTicketAddButton(interaction) {
+  await interaction.showModal(buildTicketTypeModal("painel_tipoticket_add_modal", "Adicionar Tipo de Suporte"));
+}
+
+// O menu "Editar": abre o formulário do tipo escolhido, preenchido.
+export async function handleTipoTicketEditSelect(interaction) {
+  const index = Number(interaction.values[0]);
+  const type = getGuildConfig(interaction.guildId).ticketTypes[index];
+  if (!type) {
+    return interaction.reply({ embeds: [baseEmbed().setColor(0xed4245).setDescription("❌ Esse tipo de suporte não existe mais. Abra o `/painel` de novo.")], ephemeral: true });
+  }
+  await interaction.showModal(buildTicketTypeModal(`${TIPO_TICKET_EDIT_MODAL_PREFIX}${index}`, `Editar ${type.label}`.slice(0, 45), type));
+}
+
+export async function handleTipoTicketEditModal(interaction) {
+  const index = Number(interaction.customId.slice(TIPO_TICKET_EDIT_MODAL_PREFIX.length));
+  let result;
+  const cfg = updateGuildConfig(interaction.guildId, (c) => {
+    result = editTicketType(c, index, {
+      label: interaction.fields.getTextInputValue("nome"),
+      emoji: interaction.fields.getTextInputValue("emoji"),
+      description: interaction.fields.getTextInputValue("descricao"),
+    });
+  });
+  if (!result.ok) {
+    return interaction.reply({ embeds: [baseEmbed().setColor(0xed4245).setDescription(`❌ ${result.reason}`)], ephemeral: true });
+  }
+  await interaction.update(buildTipoTicketView(cfg));
+  refreshTicketPanel(interaction.guild).catch((err) => console.error("[painelMenu] Falha ao atualizar o painel de tickets:", err.message));
 }
 
 export async function handleTipoTicketAddModal(interaction) {
   const nome = interaction.fields.getTextInputValue("nome").trim();
   const emoji = interaction.fields.getTextInputValue("emoji").trim();
+  const descricao = interaction.fields.getTextInputValue("descricao").trim();
 
   let result;
   const cfg = updateGuildConfig(interaction.guildId, (c) => {
-    result = addTicketType(c, nome, emoji);
+    result = addTicketType(c, nome, emoji, descricao);
   });
 
   if (!interaction.isFromMessage()) {

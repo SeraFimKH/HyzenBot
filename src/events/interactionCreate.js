@@ -79,6 +79,7 @@ export async function execute(interaction) {
       if (interaction.customId.startsWith("feed_modal")) return await feedModal.handle(interaction);
       if (interaction.customId === "aviso_modal") return await avisoModal.handle(interaction);
       if (interaction.customId === "painel_tipoticket_add_modal") return await painelMenu.handleTipoTicketAddModal(interaction);
+      if (interaction.customId.startsWith(painelMenu.TIPO_TICKET_EDIT_MODAL_PREFIX)) return await painelMenu.handleTipoTicketEditModal(interaction);
       if (interaction.customId === "pix_modal") return await pixButtons.handlePixModalSubmit(interaction);
       if (interaction.customId === "mp_token_modal") return await pixButtons.handleMpTokenModalSubmit(interaction);
       if (interaction.customId.startsWith("rules_edit_modal:")) return await rulesModal.handleRulesModalSubmit(interaction);
@@ -107,6 +108,7 @@ export async function execute(interaction) {
       // ticket_type_select: o menu antigo, que aparecia só para quem clicava no botão.
       if (interaction.customId === "ticket_open_select" || interaction.customId === "ticket_type_select") return await ticketButtons.handleTypeSelected(interaction);
       if (interaction.customId === "painel_tipoticket_remover") return await painelMenu.handleTipoTicketRemoveSelect(interaction);
+      if (interaction.customId === painelMenu.TIPO_TICKET_EDIT_SELECT_ID) return await painelMenu.handleTipoTicketEditSelect(interaction);
       if (interaction.customId === supportConfig.TYPE_SELECT_ID) return await supportConfig.handleTypeSelect(interaction);
       if (interaction.customId === adminGuildConfig.ADMIN_GUILD_SELECT_ID) return await adminGuildConfig.handleAdminGuildSelect(interaction);
       if (interaction.customId.startsWith(adminGuildConfig.REMOTE_CHANNEL_PREFIX)) return await adminGuildConfig.handleRemoteChannelSelect(interaction);

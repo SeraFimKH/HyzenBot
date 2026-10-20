@@ -4,7 +4,7 @@ import { isAdmin } from "../utils/permissions.js";
 import { errorEmbed, successEmbed } from "../utils/embeds.js";
 import { buildConfigSummaryEmbed, CHANNEL_LABELS } from "../utils/configEmbed.js";
 import { publishTicketPanel, refreshTicketPanel } from "../utils/ticketPanel.js";
-import { addTicketType, removeTicketTypes } from "../utils/ticketTypes.js";
+import { addTicketType, describeTicketType, removeTicketTypes, MAX_DESCRIPTION_LENGTH } from "../utils/ticketTypes.js";
 import { handleOpenMpTokenModal } from "../interactions/pixButtons.js";
 import { handleOpenRulesModal } from "../interactions/rulesModal.js";
 import { publishRules } from "../utils/rulesPanel.js";
@@ -123,6 +123,13 @@ export const data = new SlashCommandBuilder()
       )
       .addStringOption((opt) =>
         opt.setName("emoji").setDescription("Emoji do tipo de suporte (opcional, só para adicionar)").setRequired(false),
+      )
+      .addStringOption((opt) =>
+        opt
+          .setName("descricao")
+          .setDescription("Texto pequeno embaixo do nome no menu do painel (opcional, só para adicionar)")
+          .setMaxLength(MAX_DESCRIPTION_LENGTH)
+          .setRequired(false),
       ),
   )
   .addSubcommand((sub) =>
@@ -324,10 +331,11 @@ export async function execute(interaction) {
     const acao = interaction.options.getString("acao", true);
     const nome = interaction.options.getString("nome");
     const emoji = interaction.options.getString("emoji");
+    const descricao = interaction.options.getString("descricao");
 
     if (acao === "listar") {
       const list = cfg.ticketTypes.length
-        ? cfg.ticketTypes.map((t, i) => `${i + 1}. ${t.emoji || "•"} ${t.label}`).join("\n")
+        ? cfg.ticketTypes.map((t, i) => `${i + 1}. ${describeTicketType(t)}`).join("\n")
         : "*(nenhum tipo cadastrado — o ticket é criado direto, sem perguntar o tipo)*";
       return interaction.reply({ embeds: [successEmbed(`**Tipos de suporte:**\n${list}`)], ephemeral: true });
     }
@@ -338,7 +346,7 @@ export async function execute(interaction) {
       }
       let result;
       updateGuildConfig(interaction.guildId, (c) => {
-        result = addTicketType(c, nome, emoji);
+        result = addTicketType(c, nome, emoji, descricao);
       });
       if (!result.ok) {
         return interaction.reply({ embeds: [errorEmbed(result.reason)], ephemeral: true });
