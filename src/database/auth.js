@@ -49,6 +49,25 @@ export async function findLinkedPlayerName(discordId) {
   return result.rows[0]?.name ?? null;
 }
 
+// Every link with its game name, for the nickname sync's full pass (services/nicknameSync.js).
+export async function findAllLinkedNames() {
+  const result = await pool.query(
+    "SELECT l.discord_id, p.name FROM hyzen_auth_links l JOIN hyzen_players p ON p.id = l.player_id",
+  );
+  return result.rows;
+}
+
+// Links made in (after, upTo] on the database's clock (see databaseClock.js), with the game name — the ones the
+// nickname sync hasn't seen yet.
+export async function findLinksBetween(after, upTo) {
+  const result = await pool.query(
+    `SELECT l.discord_id, p.name FROM hyzen_auth_links l JOIN hyzen_players p ON p.id = l.player_id
+     WHERE l.linked_at > $1 AND l.linked_at <= $2`,
+    [after, upTo],
+  );
+  return result.rows;
+}
+
 // Reverse of findLinkByDiscordId — the auth table is only indexed for discord_id → player_id, so a lookup by
 // player_id (used to DM a punished player, or to show their linked account in /infocompleta) needs its own
 // query rather than a cache-friendly index hit.

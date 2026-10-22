@@ -3,6 +3,7 @@ import { buildRulesEmbeds, buildJoinRulesButtons } from "../utils/rulesPanel.js"
 import { resolveUsedInvite } from "../utils/inviteTracker.js";
 import { getOwnerByCode, addInviteCredit } from "../database/invites.js";
 import { creditInviteRaffleEntry } from "../utils/raffleEntries.js";
+import { syncMember } from "../services/nicknameSync.js";
 
 async function handleInviteCredit(member) {
   const usedInvite = await resolveUsedInvite(member.guild);
@@ -26,6 +27,9 @@ export async function execute(member) {
   } catch (err) {
     console.error("[guildMemberAdd] Erro ao processar convite:", err);
   }
+
+  // Already linked to the game: called by the game name from the start.
+  await syncMember(member).catch((err) => console.error("[guildMemberAdd] Erro ao trocar o apelido:", err.message));
 
   try {
     const cfg = getGuildConfig(member.guild.id);
