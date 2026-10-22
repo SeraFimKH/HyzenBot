@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
 import { buildAuthPanelMessage } from "../interactions/authButtons.js";
 
 // Nome separado de /painel (o menu de configuração geral do bot, em commands/painel.js) — evita colisão e
@@ -10,5 +10,5 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   await interaction.channel.send(buildAuthPanelMessage());
-  await interaction.reply({ content: "Painel postado.", ephemeral: true });
+  await interaction.reply({ content: "Painel postado.", flags: MessageFlags.Ephemeral });
 }

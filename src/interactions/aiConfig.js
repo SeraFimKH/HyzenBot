@@ -1,4 +1,4 @@
-import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from "discord.js";
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags } from "discord.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { isAdmin } from "../utils/permissions.js";
 import { baseEmbed, errorEmbed, successEmbed } from "../utils/embeds.js";
@@ -9,7 +9,7 @@ export async function handleOpenAiKeyModal(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Somente administradores podem configurar a IA.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Somente administradores podem configurar a IA.")], flags: MessageFlags.Ephemeral });
   }
 
   const modal = new ModalBuilder().setCustomId("ai_key_modal").setTitle("Configurar IA (qualquer provedor)");
@@ -53,7 +53,7 @@ export async function handleAiKeyModalSubmit(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Somente administradores podem configurar a IA.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Somente administradores podem configurar a IA.")], flags: MessageFlags.Ephemeral });
   }
 
   const chave = interaction.fields.getTextInputValue("chave").trim();
@@ -72,7 +72,7 @@ export async function handleAiKeyModalSubmit(interaction) {
 
   return interaction.reply({
     embeds: [successEmbed("Configuração de IA salva! Ative com `/config ia-ativar` (ou pelo `/painel`) pra começar a responder os tickets automaticamente.")],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }
 
@@ -80,7 +80,7 @@ export async function handleOpenAiContextModal(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Somente administradores podem configurar a IA.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Somente administradores podem configurar a IA.")], flags: MessageFlags.Ephemeral });
   }
 
   const modal = new ModalBuilder().setCustomId("ai_context_modal").setTitle("Contexto da IA no Ticket");
@@ -105,7 +105,7 @@ export async function handleAiContextModalSubmit(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Somente administradores podem configurar a IA.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Somente administradores podem configurar a IA.")], flags: MessageFlags.Ephemeral });
   }
 
   const texto = interaction.fields.getTextInputValue("texto").trim();
@@ -120,7 +120,7 @@ export async function handleAiContextModalSubmit(interaction) {
 
   return interaction.reply({
     embeds: [successEmbed("Contexto da IA salvo! Ele já vale pras próximas respostas automáticas.")],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }
 

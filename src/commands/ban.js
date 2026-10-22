@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { isStaff } from "../utils/permissions.js";
 import { errorEmbed, successEmbed } from "../utils/embeds.js";
@@ -24,7 +24,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
   if (!isStaff(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para usar este comando.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para usar este comando.")], flags: MessageFlags.Ephemeral });
   }
 
   const motivo = interaction.options.getString("motivo", true).trim();
@@ -36,12 +36,12 @@ export async function execute(interaction) {
     if (minutes === null) {
       return interaction.reply({
         embeds: [errorEmbed("Duração inválida. Use o formato `1d`, `12h`, `30m`, `1d12h`, etc.")],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const { player, error } = await resolveTargetPlayer(interaction);
   if (!player) {

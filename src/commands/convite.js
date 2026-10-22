@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { getRaffle } from "../database/raffles.js";
 import { getPersonalCode, setPersonalCode, getInviteCount, getGuildInviteCounts } from "../database/invites.js";
@@ -18,7 +18,7 @@ export async function execute(interaction) {
   const sub = interaction.options.getSubcommand();
 
   if (sub === "link") {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const existingCode = getPersonalCode(interaction.guildId, interaction.user.id);
     let invite = existingCode ? await interaction.guild.invites.fetch(existingCode).catch(() => null) : null;
@@ -59,11 +59,11 @@ export async function execute(interaction) {
       .slice(0, 10);
 
     if (!top.length) {
-      return interaction.reply({ embeds: [successEmbed("Ninguém convidou ninguém ainda por aqui.")], ephemeral: true });
+      return interaction.reply({ embeds: [successEmbed("Ninguém convidou ninguém ainda por aqui.")], flags: MessageFlags.Ephemeral });
     }
 
     const list = top.map(([userId, count], i) => `${i + 1}. <@${userId}> — ${count} convite(s)`).join("\n");
 
-    return interaction.reply({ embeds: [successEmbed(`**🏆 Ranking de Convites**\n\n${list}`)], ephemeral: true });
+    return interaction.reply({ embeds: [successEmbed(`**🏆 Ranking de Convites**\n\n${list}`)], flags: MessageFlags.Ephemeral });
   }
 }

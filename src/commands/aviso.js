@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from "discord.js";
+import { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { isAdmin } from "../utils/permissions.js";
 import { errorEmbed } from "../utils/embeds.js";
@@ -11,13 +11,13 @@ export async function execute(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para usar este comando.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para usar este comando.")], flags: MessageFlags.Ephemeral });
   }
 
   if (!cfg.channels.changelog) {
     return interaction.reply({
       embeds: [errorEmbed("O canal de changelog ainda não foi configurado. Rode `/config canal tipo:Changelog / Avisos` primeiro.")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 

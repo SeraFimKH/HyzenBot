@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import { buildVerificationResponse } from "../interactions/authButtons.js";
 
 export const data = new SlashCommandBuilder()
@@ -7,5 +7,5 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   const response = await buildVerificationResponse(interaction.user.id);
-  await interaction.reply({ ...response, ephemeral: true });
+  await interaction.reply({ ...response, flags: MessageFlags.Ephemeral });
 }

@@ -1,9 +1,20 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
-import { Collection } from "discord.js";
+import { ApplicationIntegrationType, Collection, InteractionContextType } from "discord.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// What Discord is given for a command (commandSync per server, deployCommands globally): usable only inside a server.
+// Every command reads the server — the member, their roles, its config — and a global registration would otherwise also
+// list it in DMs, where it can only break.
+export function commandJson(command) {
+  return {
+    ...command.data.toJSON(),
+    contexts: [InteractionContextType.Guild],
+    integration_types: [ApplicationIntegrationType.GuildInstall],
+  };
+}
 
 export async function loadCommands(client) {
   client.commands = new Collection();

@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from "discord.js";
+import { ActionRowBuilder, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle } from "discord.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { baseEmbed, errorEmbed } from "../utils/embeds.js";
 import { buildMainPanel } from "../utils/painelView.js";
@@ -41,10 +41,10 @@ export async function handleSuggestionConfigModalSubmit(interaction) {
   const cooldown = Number(interaction.fields.getTextInputValue("intervalo").trim());
 
   if (!Number.isInteger(days) || days < 1 || days > MAX_POLL_DAYS) {
-    return interaction.reply({ embeds: [errorEmbed(`Os dias de votação precisam ser um número inteiro de 1 a ${MAX_POLL_DAYS} (o máximo do Discord).`)], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed(`Os dias de votação precisam ser um número inteiro de 1 a ${MAX_POLL_DAYS} (o máximo do Discord).`)], flags: MessageFlags.Ephemeral });
   }
   if (!Number.isInteger(cooldown) || cooldown < 0 || cooldown > MAX_COOLDOWN_MINUTES) {
-    return interaction.reply({ embeds: [errorEmbed(`O intervalo precisa ser um número inteiro de 0 a ${MAX_COOLDOWN_MINUTES} minutos.`)], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed(`O intervalo precisa ser um número inteiro de 0 a ${MAX_COOLDOWN_MINUTES} minutos.`)], flags: MessageFlags.Ephemeral });
   }
 
   const cfg = updateGuildConfig(interaction.guildId, (c) => {
@@ -57,7 +57,7 @@ export async function handleSuggestionConfigModalSubmit(interaction) {
   }
   return interaction.reply({
     embeds: [baseEmbed().setDescription(`✅ Votação de **${days} dia(s)**, intervalo de **${cooldown} minuto(s)** entre sugestões.`)],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }
 

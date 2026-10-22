@@ -1,3 +1,4 @@
+import { MessageFlags } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { baseEmbed, errorEmbed, successEmbed } from "../utils/embeds.js";
 import { getText } from "../utils/textDefaults.js";
@@ -11,7 +12,7 @@ export async function handle(interaction) {
   if (!cfg.channels.changelog) {
     return interaction.reply({
       embeds: [errorEmbed("O canal de changelog ainda não foi configurado.")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -19,7 +20,7 @@ export async function handle(interaction) {
   if (!channel) {
     return interaction.reply({
       embeds: [errorEmbed("O canal de changelog configurado não foi encontrado.")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -31,5 +32,5 @@ export async function handle(interaction) {
 
   await channel.send({ content: getPingMention(cfg) || undefined, embeds: [embed] });
 
-  return interaction.reply({ embeds: [successEmbed(`Aviso publicado em ${channel}.`)], ephemeral: true });
+  return interaction.reply({ embeds: [successEmbed(`Aviso publicado em ${channel}.`)], flags: MessageFlags.Ephemeral });
 }

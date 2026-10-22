@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder, MessageFlags } from "discord.js";
 import { config } from "../config.js";
 import * as realMp from "../services/mercadoPago.js";
 import * as mockMp from "../services/mercadoPagoMock.js";
@@ -124,7 +124,7 @@ export async function replyPixError(interaction, err) {
     ? "O Mercado Pago ainda não foi configurado neste bot. Configure com `/config pagamento` ou pelo `/painel`."
     : `Não foi possível gerar a cobrança Pix: ${err.message}`;
 
-  const payload = { embeds: [errorEmbed(message)], ephemeral: true };
+  const payload = { embeds: [errorEmbed(message)], flags: MessageFlags.Ephemeral };
   if (interaction.deferred || interaction.replied) {
     await interaction.editReply(payload);
   } else {

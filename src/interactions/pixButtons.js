@@ -1,4 +1,4 @@
-import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from "discord.js";
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags } from "discord.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { getPayment } from "../database/pixPayments.js";
 import { getTicket } from "../database/tickets.js";
@@ -21,7 +21,7 @@ export async function handleOpenPixModal(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!canSupport(interaction.member, cfg, SupportPermission.PIX, getTicket(interaction.channelId)?.type)) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para gerar cobranças Pix.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para gerar cobranças Pix.")], flags: MessageFlags.Ephemeral });
   }
 
   const modal = new ModalBuilder().setCustomId("pix_modal").setTitle("Gerar Cobrança Pix");
@@ -54,17 +54,17 @@ export async function handlePixModalSubmit(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!canSupport(interaction.member, cfg, SupportPermission.PIX, getTicket(interaction.channelId)?.type)) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para gerar cobranças Pix.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para gerar cobranças Pix.")], flags: MessageFlags.Ephemeral });
   }
 
   const valor = parseValor(interaction.fields.getTextInputValue("valor"));
   if (!Number.isFinite(valor) || valor <= 0) {
-    return interaction.reply({ embeds: [errorEmbed("Valor inválido. Use um número maior que zero, ex: 49,90.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Valor inválido. Use um número maior que zero, ex: 49,90.")], flags: MessageFlags.Ephemeral });
   }
 
   const descricao = interaction.fields.getTextInputValue("descricao") || `Pagamento ${cfg.communityName}`;
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     await createAndPostPixCharge({
@@ -87,14 +87,14 @@ export async function handleCheckButton(interaction) {
   const payment = getPayment(paymentId);
 
   if (!payment) {
-    return interaction.reply({ embeds: [errorEmbed("Cobrança não encontrada.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Cobrança não encontrada.")], flags: MessageFlags.Ephemeral });
   }
 
   if (payment.status !== "pending") {
-    return interaction.reply({ embeds: [errorEmbed(`Esta cobrança já está com status: ${payment.status}.`)], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed(`Esta cobrança já está com status: ${payment.status}.`)], flags: MessageFlags.Ephemeral });
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const updated = await checkAndUpdatePixPayment(interaction.client, paymentId);
 
   const statusMessage =
@@ -111,7 +111,7 @@ export async function handleOpenMpTokenModal(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Somente administradores podem configurar o Mercado Pago.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Somente administradores podem configurar o Mercado Pago.")], flags: MessageFlags.Ephemeral });
   }
 
   const modal = new ModalBuilder().setCustomId("mp_token_modal").setTitle("Configurar Mercado Pago");
@@ -133,7 +133,7 @@ export async function handleMpTokenModalSubmit(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Somente administradores podem configurar o Mercado Pago.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Somente administradores podem configurar o Mercado Pago.")], flags: MessageFlags.Ephemeral });
   }
 
   const token = interaction.fields.getTextInputValue("token").trim();
@@ -148,6 +148,6 @@ export async function handleMpTokenModalSubmit(interaction) {
 
   return interaction.reply({
     embeds: [successEmbed("Token do Mercado Pago salvo! O `/pix` já vai gerar cobranças reais a partir de agora.")],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }

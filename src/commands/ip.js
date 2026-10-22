@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { currentServerStatus } from "../services/serverStatus.js";
 import { errorEmbed } from "../utils/embeds.js";
@@ -12,7 +12,7 @@ export async function execute(interaction) {
   if (!cfg.serverIp) {
     return interaction.reply({
       embeds: [errorEmbed("O endereço do servidor ainda não foi configurado. Um administrador pode definir em `/painel` → Administração → Endereço do Servidor.")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 

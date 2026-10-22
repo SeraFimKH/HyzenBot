@@ -1,3 +1,4 @@
+import { MessageFlags } from "discord.js";
 import { isStaff } from "./permissions.js";
 import { errorEmbed } from "./embeds.js";
 
@@ -14,7 +15,7 @@ export async function enforceCommandsChannel(interaction, cfg) {
 
   await interaction.reply({
     embeds: [errorEmbed(`Esse comando só pode ser usado em <#${cfg.channels.commands}>.`)],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
   return false;
 }

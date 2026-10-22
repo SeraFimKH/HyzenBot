@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { SlashCommandBuilder, ChannelType } from "discord.js";
+import { SlashCommandBuilder, ChannelType, MessageFlags } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { getRaffle, setRaffle, updateRaffle } from "../database/raffles.js";
 import { isAdmin } from "../utils/permissions.js";
@@ -92,7 +92,7 @@ export async function execute(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para usar este comando.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para usar este comando.")], flags: MessageFlags.Ephemeral });
   }
 
   const sub = interaction.options.getSubcommand();
@@ -102,7 +102,7 @@ export async function execute(interaction) {
     if (existing && existing.status === "open") {
       return interaction.reply({
         embeds: [errorEmbed("Já existe um sorteio ativo neste servidor. Use `/sorteio cancelar` antes de criar outro.")],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -125,31 +125,31 @@ export async function execute(interaction) {
     if (!endDate) {
       return interaction.reply({
         embeds: [errorEmbed("Data ou hora inválida. Use o formato `dd/mm/aaaa` para data e `HH:mm` para hora.")],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
     if (endDate.getTime() <= Date.now()) {
-      return interaction.reply({ embeds: [errorEmbed("A data e hora do sorteio precisam estar no futuro.")], ephemeral: true });
+      return interaction.reply({ embeds: [errorEmbed("A data e hora do sorteio precisam estar no futuro.")], flags: MessageFlags.Ephemeral });
     }
 
     if (tipoPremio === "key" && !chave && !estoque) {
       return interaction.reply({
         embeds: [errorEmbed('Informe `chave` (um código único) ou `estoque` (nome de um estoque de `/chaves`) quando `tipo-premio` for "Chave digital".')],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
     if (estoque && countKeys(interaction.guildId, estoque) === 0) {
       return interaction.reply({
         embeds: [errorEmbed(`O estoque **${estoque}** está vazio ou não existe. Use \`/chaves adicionar\` primeiro, ou \`/chaves listar\` pra ver os nomes disponíveis.`)],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
     const targetChannelId = canalOpt?.id || cfg.channels.sorteio || interaction.channelId;
     const targetChannel = await interaction.guild.channels.fetch(targetChannelId).catch(() => null);
     if (!targetChannel) {
-      return interaction.reply({ embeds: [errorEmbed("Canal de destino do sorteio não encontrado.")], ephemeral: true });
+      return interaction.reply({ embeds: [errorEmbed("Canal de destino do sorteio não encontrado.")], flags: MessageFlags.Ephemeral });
     }
 
     const raffle = {
@@ -189,14 +189,14 @@ export async function execute(interaction) {
             (entryMode === "convite" ? " Modo convite ativado — membros ganham bilhetes usando `/convite link`." : ""),
         ),
       ],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
   if (sub === "cancelar") {
     const raffle = getRaffle(interaction.guildId);
     if (!raffle || raffle.status !== "open") {
-      return interaction.reply({ embeds: [errorEmbed("Não há nenhum sorteio ativo para cancelar.")], ephemeral: true });
+      return interaction.reply({ embeds: [errorEmbed("Não há nenhum sorteio ativo para cancelar.")], flags: MessageFlags.Ephemeral });
     }
 
     const updated = updateRaffle(interaction.guildId, (r) => {
@@ -209,13 +209,13 @@ export async function execute(interaction) {
       if (message) await message.edit({ embeds: [buildRaffleEmbed(updated)], components: buildRaffleComponents(updated) }).catch(() => {});
     }
 
-    return interaction.reply({ embeds: [successEmbed("Sorteio cancelado com sucesso.")], ephemeral: true });
+    return interaction.reply({ embeds: [successEmbed("Sorteio cancelado com sucesso.")], flags: MessageFlags.Ephemeral });
   }
 
   if (sub === "reiniciar") {
     const raffle = getRaffle(interaction.guildId);
     if (!raffle || raffle.status !== "open") {
-      return interaction.reply({ embeds: [errorEmbed("Não há nenhum sorteio ativo para reiniciar.")], ephemeral: true });
+      return interaction.reply({ embeds: [errorEmbed("Não há nenhum sorteio ativo para reiniciar.")], flags: MessageFlags.Ephemeral });
     }
 
     const updated = updateRaffle(interaction.guildId, (r) => {
@@ -231,17 +231,17 @@ export async function execute(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed(`Sorteio de **${raffle.game}** reiniciado — todas as entradas foram zeradas. O sorteio continua ativo até <t:${Math.floor(raffle.endTimestamp / 1000)}:F>.`)],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
   if (sub === "finalizar") {
     const raffle = getRaffle(interaction.guildId);
     if (!raffle || raffle.status !== "open") {
-      return interaction.reply({ embeds: [errorEmbed("Não há nenhum sorteio ativo para finalizar.")], ephemeral: true });
+      return interaction.reply({ embeds: [errorEmbed("Não há nenhum sorteio ativo para finalizar.")], flags: MessageFlags.Ephemeral });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     await finishRaffle(interaction.client, interaction.guildId, raffle);
 
     return interaction.editReply({
@@ -252,13 +252,13 @@ export async function execute(interaction) {
   if (sub === "participantes") {
     const raffle = getRaffle(interaction.guildId);
     if (!raffle || raffle.status !== "open") {
-      return interaction.reply({ embeds: [errorEmbed("Não há nenhum sorteio ativo no momento.")], ephemeral: true });
+      return interaction.reply({ embeds: [errorEmbed("Não há nenhum sorteio ativo no momento.")], flags: MessageFlags.Ephemeral });
     }
 
     if (!raffle.participants.length) {
       return interaction.reply({
         embeds: [successEmbed(`**0 participante(s)** no sorteio de **${raffle.game}**.`)],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -279,7 +279,7 @@ export async function execute(interaction) {
           `**${ticketsByUser.size} participante(s)**, **${raffle.participants.length} entrada(s)** no sorteio de **${raffle.game}**:\n\n${list}`,
         ),
       ],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 }

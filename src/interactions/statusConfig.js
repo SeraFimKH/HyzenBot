@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, PermissionsBitField, TextInputBuilder, TextInputStyle } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ModalBuilder, PermissionsBitField, TextInputBuilder, TextInputStyle } from "discord.js";
 import { formatPermissionList, missingPermissions } from "../utils/channelPermissions.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { getCachedNetworkStatus, StatusMode, StatusTableMissingError } from "../database/networkStatus.js";
@@ -94,7 +94,7 @@ export async function handleStatusReasonModalSubmit(interaction) {
   if (interaction.isFromMessage()) {
     await interaction.deferUpdate();
   } else {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   }
   await showResult(interaction, await applyStatusMode(interaction, mode, interaction.fields.getTextInputValue("motivo")));
 }
@@ -111,7 +111,7 @@ export function pinPanelRow() {
 export async function handleStatusPin(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Só administradores podem fixar o painel de status.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Só administradores podem fixar o painel de status.")], flags: MessageFlags.Ephemeral });
   }
 
   // O /status responde até em canal que o bot não enxerga; editar a mensagem depois, não.
@@ -119,7 +119,7 @@ export async function handleStatusPin(interaction) {
   if (missing.length) {
     return interaction.reply({
       embeds: [errorEmbed(`Para manter o painel aqui o bot precisa destas permissões neste canal: ${formatPermissionList(missing)}.`)],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -127,7 +127,7 @@ export async function handleStatusPin(interaction) {
   await pinStatusPanel(interaction.client, interaction.guild, interaction.channelId, interaction.message.id);
   await interaction.followUp({
     embeds: [successEmbed("Pronto: esta mensagem agora é o painel de status e se atualiza sozinha — jogadores online, manutenção, offline. Para trocar de canal: `/painel` → Servidor do Jogo.")],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }
 

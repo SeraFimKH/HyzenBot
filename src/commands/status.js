@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { currentServerStatus, setMaintenanceProgress } from "../services/serverStatus.js";
 import { isAdmin } from "../utils/permissions.js";
@@ -52,7 +52,7 @@ export async function execute(interaction) {
 async function updateProgress(interaction, progressText, stageText) {
   const cfg = getGuildConfig(interaction.guildId);
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Só administradores podem dar o progresso da manutenção. Use `/status` sem nada para ver o status.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Só administradores podem dar o progresso da manutenção. Use `/status` sem nada para ver o status.")], flags: MessageFlags.Ephemeral });
   }
 
   let progress = null;
@@ -60,12 +60,12 @@ async function updateProgress(interaction, progressText, stageText) {
     const match = progressText.trim().match(PROGRESS_PATTERN);
     progress = match ? Number(match[1]) : NaN;
     if (!Number.isInteger(progress) || progress > 100) {
-      return interaction.reply({ embeds: [errorEmbed("O progresso precisa ser um número de 0 a 100, como `40` ou `40%`.")], ephemeral: true });
+      return interaction.reply({ embeds: [errorEmbed("O progresso precisa ser um número de 0 a 100, como `40` ou `40%`.")], flags: MessageFlags.Ephemeral });
     }
   }
   const stage = stageText === null ? null : stageText.trim() === CLEAR_STAGE ? "" : stageText.trim();
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const result = await setMaintenanceProgress(interaction.client, { progress, stage, updatedBy: interaction.user.id });
   if (!result.ok) {
     return interaction.editReply({ embeds: [errorEmbed(result.reason)] });

@@ -1,4 +1,4 @@
-import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from "discord.js";
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags } from "discord.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { isAdmin } from "../utils/permissions.js";
 import { errorEmbed, successEmbed } from "../utils/embeds.js";
@@ -13,7 +13,7 @@ export async function handleOpenRulesModal(interaction, field) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para editar isso.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para editar isso.")], flags: MessageFlags.Ephemeral });
   }
 
   const meta = FIELD_META[field];
@@ -41,7 +41,7 @@ export async function handleRulesModalSubmit(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para editar isso.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para editar isso.")], flags: MessageFlags.Ephemeral });
   }
 
   const texto = interaction.fields.getTextInputValue("texto").trim();
@@ -56,6 +56,6 @@ export async function handleRulesModalSubmit(interaction) {
 
   return interaction.reply({
     embeds: [successEmbed(`${field === "rules" ? "Diretrizes" : "Termo de uso"} salvo(a)! Use \`/config publicar-regras\` (ou o \`/painel\`) para publicar no canal configurado.`)],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }

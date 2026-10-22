@@ -88,7 +88,7 @@ async function replyOrEdit(interaction, embed) {
   if (interaction.deferred || interaction.replied) {
     return interaction.editReply(payload);
   }
-  return interaction.reply({ ...payload, ephemeral: true });
+  return interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
 }
 
 async function createTicketChannel(interaction, cfg, ticketType, { reason, description }) {
@@ -165,12 +165,12 @@ export async function handleOpen(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
   const refusal = checkCanOpen(interaction, cfg);
   if (refusal) {
-    return interaction.reply({ embeds: [errorEmbed(refusal)], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed(refusal)], flags: MessageFlags.Ephemeral });
   }
 
   // Um painel antigo, de antes do menu, com tipos configurados: o menu aparece só para quem clicou.
   if (cfg.ticketTypes.length) {
-    return interaction.reply({ components: [buildTicketOpenRow(cfg)], ephemeral: true });
+    return interaction.reply({ components: [buildTicketOpenRow(cfg)], flags: MessageFlags.Ephemeral });
   }
 
   await interaction.showModal(buildTicketModal(null));
@@ -181,7 +181,7 @@ export async function handleTypeSelected(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
   const refusal = checkCanOpen(interaction, cfg);
   if (refusal) {
-    await interaction.reply({ embeds: [errorEmbed(refusal)], ephemeral: true });
+    await interaction.reply({ embeds: [errorEmbed(refusal)], flags: MessageFlags.Ephemeral });
   } else {
     const label = interaction.values[0];
     const ticketType = cfg.ticketTypes.find((t) => t.label === label) || { label, emoji: null };
@@ -200,7 +200,7 @@ export async function handleTicketModalSubmit(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
   const refusal = checkCanOpen(interaction, cfg);
   if (refusal) {
-    return interaction.reply({ embeds: [errorEmbed(refusal)], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed(refusal)], flags: MessageFlags.Ephemeral });
   }
 
   const label = interaction.customId.slice(TICKET_MODAL_PREFIX.length);
@@ -208,7 +208,7 @@ export async function handleTicketModalSubmit(interaction) {
   const reason = interaction.fields.getTextInputValue("motivo").trim();
   const description = interaction.fields.getTextInputValue("descricao").trim();
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   await createTicketChannel(interaction, cfg, ticketType, { reason, description });
 }
 
@@ -217,15 +217,15 @@ export async function handleClaim(interaction) {
   const ticket = getTicket(interaction.channel.id);
 
   if (!ticket) {
-    return interaction.reply({ embeds: [errorEmbed("Este canal não é um ticket ativo.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Este canal não é um ticket ativo.")], flags: MessageFlags.Ephemeral });
   }
 
   if (!canSupport(interaction.member, cfg, SupportPermission.ATTEND, ticket.type)) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para assumir tickets.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para assumir tickets.")], flags: MessageFlags.Ephemeral });
   }
 
   if (ticket.claimedBy) {
-    return interaction.reply({ embeds: [errorEmbed(`Este ticket já foi assumido por <@${ticket.claimedBy}>.`)], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed(`Este ticket já foi assumido por <@${ticket.claimedBy}>.`)], flags: MessageFlags.Ephemeral });
   }
 
   updateTicket(interaction.channel.id, (t) => {
@@ -248,18 +248,18 @@ export async function handleCreateVoice(interaction) {
   const ticket = getTicket(interaction.channel.id);
 
   if (!ticket) {
-    return interaction.reply({ embeds: [errorEmbed("Este canal não é um ticket ativo.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Este canal não é um ticket ativo.")], flags: MessageFlags.Ephemeral });
   }
 
   if (!canSupport(interaction.member, cfg, SupportPermission.ATTEND, ticket.type)) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para criar o canal de voz.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para criar o canal de voz.")], flags: MessageFlags.Ephemeral });
   }
 
   if (ticket.voiceChannelId) {
-    return interaction.reply({ embeds: [errorEmbed("Este ticket já tem um canal de voz.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Este ticket já tem um canal de voz.")], flags: MessageFlags.Ephemeral });
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const category = await interaction.guild.channels.fetch(cfg.ticketCategoryId).catch(() => null);
   if (!category) {
@@ -296,11 +296,11 @@ export async function handleClose(interaction) {
   const ticket = getTicket(interaction.channel.id);
 
   if (!ticket) {
-    return interaction.reply({ embeds: [errorEmbed("Este canal não é um ticket ativo.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Este canal não é um ticket ativo.")], flags: MessageFlags.Ephemeral });
   }
 
   if (!canSupport(interaction.member, cfg, SupportPermission.CLOSE, ticket.type)) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para fechar tickets.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para fechar tickets.")], flags: MessageFlags.Ephemeral });
   }
 
   const embed = EmbedBuilder.from(interaction.message.embeds[0])

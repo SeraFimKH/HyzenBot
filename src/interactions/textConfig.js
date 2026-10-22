@@ -1,4 +1,4 @@
-import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from "discord.js";
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags } from "discord.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { isAdmin } from "../utils/permissions.js";
 import { baseEmbed, errorEmbed, successEmbed } from "../utils/embeds.js";
@@ -15,11 +15,11 @@ export async function handleOpenTextModal(interaction, key) {
   const field = FIELD_BY_KEY[key];
 
   if (!field) {
-    return interaction.reply({ embeds: [errorEmbed("Texto desconhecido.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Texto desconhecido.")], flags: MessageFlags.Ephemeral });
   }
 
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Somente administradores podem editar textos.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Somente administradores podem editar textos.")], flags: MessageFlags.Ephemeral });
   }
 
   const modal = new ModalBuilder().setCustomId(`text_edit_modal:${key}`).setTitle(field.label);
@@ -43,7 +43,7 @@ export async function handleTextModalSubmit(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!field || !isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Não foi possível salvar esse texto.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Não foi possível salvar esse texto.")], flags: MessageFlags.Ephemeral });
   }
 
   const texto = interaction.fields.getTextInputValue("texto").trim();
@@ -75,7 +75,7 @@ export async function handleTextModalSubmit(interaction) {
 
   return interaction.reply({
     embeds: [successEmbed(texto ? `Texto **${field.label}** atualizado!` : `Texto **${field.label}** resetado para o padrão.`)],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }
 

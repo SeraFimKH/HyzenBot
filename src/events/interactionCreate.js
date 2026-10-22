@@ -1,3 +1,4 @@
+import { MessageFlags } from "discord.js";
 import { errorEmbed } from "../utils/embeds.js";
 import * as ticketButtons from "../interactions/ticketButtons.js";
 import * as pollButtons from "../interactions/pollButtons.js";
@@ -24,7 +25,7 @@ import { PANEL_BUTTON_ID as SUGGESTION_BUTTON_ID, REASON_MODAL_PREFIX, STATUS_BU
 import { handleAuthStart, handleAuthCheck } from "../interactions/authButtons.js";
 
 async function replyError(interaction, message) {
-  const payload = { embeds: [errorEmbed(message)], ephemeral: true };
+  const payload = { embeds: [errorEmbed(message)], flags: MessageFlags.Ephemeral };
   if (interaction.deferred || interaction.replied) {
     await interaction.editReply(payload).catch(() => {});
   } else {
@@ -38,6 +39,11 @@ export async function execute(interaction) {
     if (interaction.isChatInputCommand()) {
       const command = interaction.client.commands.get(interaction.commandName);
       if (!command) return;
+      // Every command needs a server the bot is in (the member, their roles, its config). In a DM — or a server where only
+      // the app was added, not the bot — interaction.member is missing or bare, and the command would just break.
+      if (!interaction.inCachedGuild()) {
+        return await replyError(interaction, "Os comandos do bot funcionam só dentro do servidor da Hyzen Network.");
+      }
       await command.execute(interaction);
       return;
     }

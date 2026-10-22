@@ -1,4 +1,4 @@
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from "discord.js";
 import { createVerificationCode, findLinkByDiscordId } from "../database/auth.js";
 
 // HyzenAuth's own hyzen_auth_codes.expires_at (see plugins/java-powernukkitx/HyzenAuth/src/main/resources/
@@ -69,7 +69,7 @@ export function buildAuthPanelMessage() {
 // pela próxima pessoa que clicar.
 export async function handleAuthStart(interaction) {
   const response = await buildVerificationResponse(interaction.user.id);
-  await interaction.reply({ ...response, ephemeral: true });
+  await interaction.reply({ ...response, flags: MessageFlags.Ephemeral });
 }
 
 // O botão "Já verifiquei" da resposta efêmera acima — reconfere hyzen_auth_links em vez do usuário ter que
@@ -90,6 +90,6 @@ export async function handleAuthCheck(interaction) {
   }
   await interaction.reply({
     content: "Ainda não vinculado — rode `/verificar <código>` no jogo primeiro.",
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }

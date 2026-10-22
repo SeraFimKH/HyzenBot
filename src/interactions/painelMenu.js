@@ -9,6 +9,7 @@ import {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  MessageFlags,
 } from "discord.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { baseEmbed } from "../utils/embeds.js";
@@ -225,7 +226,7 @@ export async function handleAiToggle(interaction) {
   if (aiEnabled && !cfg.aiApiKey) {
     return interaction.reply({
       embeds: [baseEmbed().setColor(0xed4245).setDescription('❌ Configure a chave de API primeiro ("🔑 Chave de API da IA").')],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -259,7 +260,7 @@ export async function handleSorteioMaxModalSubmit(interaction) {
   if (!Number.isInteger(quantidade) || quantidade < 1) {
     return interaction.reply({
       embeds: [baseEmbed().setColor(0xed4245).setDescription("❌ Informe um número inteiro maior ou igual a 1.")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -273,7 +274,7 @@ export async function handleSorteioMaxModalSubmit(interaction) {
 
   return interaction.reply({
     embeds: [baseEmbed().setDescription(`✅ Máximo de entradas por membro definido como **${quantidade}**.`)],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }
 
@@ -309,7 +310,7 @@ export async function handleSorteioPrecoModalSubmit(interaction) {
   if (!Number.isFinite(valor) || valor < 0) {
     return interaction.reply({
       embeds: [baseEmbed().setColor(0xed4245).setDescription("❌ Valor inválido. Use um número maior ou igual a 0, ex: 9,90.")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -327,7 +328,7 @@ export async function handleSorteioPrecoModalSubmit(interaction) {
         valor > 0 ? `✅ Sorteios agora são pagos por padrão (R$ ${valor.toFixed(2).replace(".", ",")}).` : "✅ Sorteios agora são gratuitos por padrão.",
       ),
     ],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }
 
@@ -356,7 +357,7 @@ export async function handleBotNomeModalSubmit(interaction) {
     console.error("[painelMenu] Falha ao mudar o nome do bot:", err);
     return interaction.reply({
       embeds: [baseEmbed().setColor(0xed4245).setDescription('❌ Não consegui mudar o nome do bot. Verifique se ele tem a permissão "Alterar apelido".')],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -367,7 +368,7 @@ export async function handleBotNomeModalSubmit(interaction) {
 
   return interaction.reply({
     embeds: [baseEmbed().setDescription(nome ? `✅ Nome do bot alterado para **${nome}**.` : "✅ Nome do bot resetado para o padrão.")],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }
 
@@ -395,7 +396,7 @@ export async function handleNomeComunidadeModalSubmit(interaction) {
   if (!nome) {
     return interaction.reply({
       embeds: [baseEmbed().setColor(0xed4245).setDescription("❌ Informe um nome.")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -409,7 +410,7 @@ export async function handleNomeComunidadeModalSubmit(interaction) {
 
   return interaction.reply({
     embeds: [baseEmbed().setDescription(`✅ Nome da comunidade definido como **${nome}**.`)],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }
 
@@ -446,7 +447,7 @@ export async function handleServerIpModalSubmit(interaction) {
   if (!ip) {
     return interaction.reply({
       embeds: [baseEmbed().setColor(0xed4245).setDescription("❌ Informe um IP.")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -456,7 +457,7 @@ export async function handleServerIpModalSubmit(interaction) {
     if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
       return interaction.reply({
         embeds: [baseEmbed().setColor(0xed4245).setDescription("❌ Porta inválida — informe um número entre 1 e 65535, ou deixe vazio.")],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
     porta = parsed;
@@ -475,7 +476,7 @@ export async function handleServerIpModalSubmit(interaction) {
 
   return interaction.reply({
     embeds: [baseEmbed().setDescription(`✅ Endereço do servidor definido como **${enderecoTexto}**.`)],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }
 
@@ -623,13 +624,13 @@ export async function handleChannelSelect(interaction) {
   // O painel de sugestões vai para o canal novo na hora — e a staff vê se faltou alguma permissão.
   if (tipo === "sugestoes") {
     const embed = await publishSuggestionPanel(interaction.client, interaction.guildId);
-    await interaction.followUp({ embeds: [embed], ephemeral: true }).catch(() => {});
+    await interaction.followUp({ embeds: [embed], flags: MessageFlags.Ephemeral }).catch(() => {});
   }
 
   // O botão do pré-registro vai para o canal novo na hora (e sai do antigo).
   if (tipo === "preRegistro") {
     const embed = await publishBetaRegistrationPanel(interaction.client, interaction.guildId);
-    await interaction.followUp({ embeds: [embed], ephemeral: true }).catch(() => {});
+    await interaction.followUp({ embeds: [embed], flags: MessageFlags.Ephemeral }).catch(() => {});
   }
 
   // O painel de status aparece no canal novo já, sem esperar a próxima verificação.
@@ -725,7 +726,7 @@ export async function handleTipoTicketEditSelect(interaction) {
   const index = Number(interaction.values[0]);
   const type = getGuildConfig(interaction.guildId).ticketTypes[index];
   if (!type) {
-    return interaction.reply({ embeds: [baseEmbed().setColor(0xed4245).setDescription("❌ Esse tipo de suporte não existe mais. Abra o `/painel` de novo.")], ephemeral: true });
+    return interaction.reply({ embeds: [baseEmbed().setColor(0xed4245).setDescription("❌ Esse tipo de suporte não existe mais. Abra o `/painel` de novo.")], flags: MessageFlags.Ephemeral });
   }
   await interaction.showModal(buildTicketTypeModal(`${TIPO_TICKET_EDIT_MODAL_PREFIX}${index}`, `Editar ${type.label}`.slice(0, 45), type));
 }
@@ -741,7 +742,7 @@ export async function handleTipoTicketEditModal(interaction) {
     });
   });
   if (!result.ok) {
-    return interaction.reply({ embeds: [baseEmbed().setColor(0xed4245).setDescription(`❌ ${result.reason}`)], ephemeral: true });
+    return interaction.reply({ embeds: [baseEmbed().setColor(0xed4245).setDescription(`❌ ${result.reason}`)], flags: MessageFlags.Ephemeral });
   }
   await interaction.update(buildTipoTicketView(cfg));
   refreshTicketPanel(interaction.guild).catch((err) => console.error("[painelMenu] Falha ao atualizar o painel de tickets:", err.message));
@@ -758,11 +759,11 @@ export async function handleTipoTicketAddModal(interaction) {
   });
 
   if (!interaction.isFromMessage()) {
-    return interaction.reply({ embeds: [baseEmbed().setDescription(result.ok ? "✅ Tipo adicionado! Abra `/painel` de novo para ver a lista." : `❌ ${result.reason}`)], ephemeral: true });
+    return interaction.reply({ embeds: [baseEmbed().setDescription(result.ok ? "✅ Tipo adicionado! Abra `/painel` de novo para ver a lista." : `❌ ${result.reason}`)], flags: MessageFlags.Ephemeral });
   }
 
   if (!result.ok) {
-    return interaction.reply({ embeds: [baseEmbed().setColor(0xed4245).setDescription(`❌ ${result.reason}`)], ephemeral: true });
+    return interaction.reply({ embeds: [baseEmbed().setColor(0xed4245).setDescription(`❌ ${result.reason}`)], flags: MessageFlags.Ephemeral });
   }
 
   await interaction.update(buildTipoTicketView(cfg));

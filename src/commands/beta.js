@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { MAX_NAME_LENGTH } from "../database/betaGrants.js";
 import { getNetworkStatus, isBetaAccessOpen, setBetaAccessOpen, StatusTableMissingError } from "../database/networkStatus.js";
@@ -47,10 +47,10 @@ export async function execute(interaction) {
   const sub = interaction.options.getSubcommand();
   const allowed = sub === "lista" ? isStaff(interaction.member, cfg) : isAdmin(interaction.member, cfg);
   if (!allowed) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para usar este comando.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para usar este comando.")], flags: MessageFlags.Ephemeral });
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   try {
     if (sub === "lista") return await interaction.editReply({ embeds: [buildBetaOverviewEmbed(cfg, await getBetaOverview())], allowedMentions: { parse: [] } });
     if (sub === "adicionar") return await add(interaction);

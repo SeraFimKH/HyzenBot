@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { canSupport, SupportPermission } from "../utils/supportPermissions.js";
 import { getTicket } from "../database/tickets.js";
@@ -19,13 +19,13 @@ export async function execute(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!canSupport(interaction.member, cfg, SupportPermission.PIX, getTicket(interaction.channelId)?.type)) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para gerar cobranças Pix.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para gerar cobranças Pix.")], flags: MessageFlags.Ephemeral });
   }
 
   const valor = interaction.options.getNumber("valor", true);
   const descricao = interaction.options.getString("descricao") || `Pagamento ${cfg.communityName}`;
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     await createAndPostPixCharge({

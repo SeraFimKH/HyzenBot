@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { getNetworkStatus, isBetaAccessOpen, setBetaAccessOpen, StatusTableMissingError } from "../database/networkStatus.js";
 import { allowPlayer, disallowPlayer, findKnownPlayerName, listAllowedPlayers, MAX_NAME_LENGTH } from "../database/maintenanceAllowlist.js";
@@ -40,10 +40,10 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para usar este comando.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para usar este comando.")], flags: MessageFlags.Ephemeral });
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   try {
     const sub = interaction.options.getSubcommand();
     if (sub === "lista") return await showList(interaction, cfg);

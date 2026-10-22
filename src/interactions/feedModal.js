@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { hasFeedback, markFeedbackGiven } from "../database/ticketFeedback.js";
 import { baseEmbed, errorEmbed, successEmbed } from "../utils/embeds.js";
@@ -16,14 +16,14 @@ export async function handle(interaction) {
   if (!Number.isInteger(estrelas) || estrelas < 1 || estrelas > 5) {
     return interaction.reply({
       embeds: [errorEmbed("A quantidade de estrelas precisa ser um número inteiro entre 1 e 5. Use `/feed` novamente.")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
   if (!Number.isInteger(nota) || nota < 0 || nota > 10) {
     return interaction.reply({
       embeds: [errorEmbed("A nota precisa ser um número inteiro entre 0 e 10. Use `/feed` novamente.")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -35,14 +35,14 @@ export async function handle(interaction) {
   if (!guildId) {
     return interaction.reply({
       embeds: [errorEmbed("Não foi possível identificar o servidor de origem deste feedback. Tente novamente pelo `/feed` dentro do servidor.")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
   if (ticketChannelId && hasFeedback(ticketChannelId)) {
     return interaction.reply({
       embeds: [errorEmbed("Você já avaliou o atendimento deste ticket. Obrigado pelo feedback!")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -50,7 +50,7 @@ export async function handle(interaction) {
   if (!cfg.channels.feedback) {
     return interaction.reply({
       embeds: [errorEmbed("O canal de feedback ainda não foi configurado. Peça a um administrador para rodar `/config canal tipo:Feedback`.")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -58,7 +58,7 @@ export async function handle(interaction) {
   if (!channel) {
     return interaction.reply({
       embeds: [errorEmbed("O canal de feedback configurado não foi encontrado.")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -90,6 +90,6 @@ export async function handle(interaction) {
 
   return interaction.reply({
     embeds: [successEmbed(getText(cfg, "feedback_sucesso_msg"))],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }

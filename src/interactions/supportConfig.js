@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, RoleSelectMenuBuilder, StringSelectMenuBuilder } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, RoleSelectMenuBuilder, StringSelectMenuBuilder } from "discord.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { baseEmbed, errorEmbed } from "../utils/embeds.js";
 import { isAdmin } from "../utils/permissions.js";
@@ -136,7 +136,7 @@ export async function handleTypeSelect(interaction) {
 export async function handleRoleSelect(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Só administradores mudam as permissões do suporte.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Só administradores mudam as permissões do suporte.")], flags: MessageFlags.Ephemeral });
   }
   const kind = interaction.customId.slice(ROLE_SELECT_PREFIX.length);
   const roleIds = interaction.values;

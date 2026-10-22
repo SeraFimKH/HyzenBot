@@ -1,4 +1,4 @@
-import { ThreadAutoArchiveDuration } from "discord.js";
+import { MessageFlags, ThreadAutoArchiveDuration } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { createSuggestion, discardSuggestion, getSuggestion, lastSuggestionAt, updateSuggestion } from "../database/suggestions.js";
 import { errorEmbed, successEmbed } from "../utils/embeds.js";
@@ -42,7 +42,7 @@ export async function handleOpenSuggestion(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
   const nextAt = nextAllowedAt(cfg, interaction);
   if (nextAt) {
-    return interaction.reply({ embeds: [cooldownEmbed(nextAt)], ephemeral: true });
+    return interaction.reply({ embeds: [cooldownEmbed(nextAt)], flags: MessageFlags.Ephemeral });
   }
   await interaction.showModal(buildSuggestionModal());
 }
@@ -50,7 +50,7 @@ export async function handleOpenSuggestion(interaction) {
 // O formulário enviado: a sugestão vai para o canal — o cartão (com a situação e os botões da equipe) e, colada
 // nele, a enquete do Discord —, ganha um tópico para discussão, e o painel desce para baixo dela.
 export async function handleSuggestionModalSubmit(interaction) {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const cfg = getGuildConfig(interaction.guildId);
   const title = interaction.fields.getTextInputValue("titulo").trim().replace(/\s+/g, " ");
@@ -139,21 +139,21 @@ async function postSuggestion(channel, cfg, suggestion) {
 export async function handleStatusButton(interaction) {
   const [number, status] = parseTarget(interaction.customId, STATUS_BUTTON_PREFIX);
   const refusal = checkStatusChange(interaction, number, status);
-  if (refusal) return interaction.reply({ embeds: [errorEmbed(refusal)], ephemeral: true });
+  if (refusal) return interaction.reply({ embeds: [errorEmbed(refusal)], flags: MessageFlags.Ephemeral });
 
   if (SuggestionStatus[status].final) {
     return interaction.showModal(buildReasonModal(number, status));
   }
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   await interaction.editReply({ embeds: [await applyStatus(interaction, number, status, null)] });
 }
 
 export async function handleReasonModalSubmit(interaction) {
   const [number, status] = parseTarget(interaction.customId, REASON_MODAL_PREFIX);
   const refusal = checkStatusChange(interaction, number, status);
-  if (refusal) return interaction.reply({ embeds: [errorEmbed(refusal)], ephemeral: true });
+  if (refusal) return interaction.reply({ embeds: [errorEmbed(refusal)], flags: MessageFlags.Ephemeral });
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const reason = interaction.fields.getTextInputValue("motivo").trim() || null;
   await interaction.editReply({ embeds: [await applyStatus(interaction, number, status, reason)] });
 }

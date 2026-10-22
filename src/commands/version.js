@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, version as djsVersion } from "discord.js";
+import { MessageFlags, SlashCommandBuilder, version as djsVersion } from "discord.js";
 import { baseEmbed } from "../utils/embeds.js";
 import { formatDuration } from "../utils/format.js";
 import { readFileSync } from "fs";
@@ -24,5 +24,5 @@ export async function execute(interaction) {
       { name: "Servidores", value: `${interaction.client.guilds.cache.size}`, inline: true },
     );
 
-  await interaction.reply({ embeds: [embed], ephemeral: true });
+  await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
 }

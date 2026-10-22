@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { getNetworkStatus, isBetaAccessOpen, setBetaAccessOpen, StatusTableMissingError } from "../database/networkStatus.js";
 import { accessChangedText, BETA_OPEN_BUTTON_ID, BETA_TABLE_MISSING, buildBetaAccessView, buildBetaOverviewEmbed } from "../utils/betaViews.js";
@@ -37,7 +37,7 @@ export async function handleBetaMenu(interaction, value) {
 export async function handleBetaAccessButton(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para fazer isso.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para fazer isso.")], flags: MessageFlags.Ephemeral });
   }
   const open = interaction.customId === BETA_OPEN_BUTTON_ID;
   await interaction.deferUpdate();

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { setPoll, getPoll, updatePoll, findLatestOpenPoll } from "../database/polls.js";
 import { isAdmin } from "../utils/permissions.js";
@@ -68,7 +68,7 @@ export async function execute(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para usar este comando.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para usar este comando.")], flags: MessageFlags.Ephemeral });
   }
 
   const sub = interaction.options.getSubcommand();
@@ -99,7 +99,7 @@ export async function execute(interaction) {
 
     setPoll(message.id, poll);
 
-    return interaction.reply({ embeds: [successEmbed("Enquete criada com sucesso!")], ephemeral: true });
+    return interaction.reply({ embeds: [successEmbed("Enquete criada com sucesso!")], flags: MessageFlags.Ephemeral });
   }
 
   if (sub === "encerrar") {
@@ -114,11 +114,11 @@ export async function execute(interaction) {
     }
 
     if (!entry) {
-      return interaction.reply({ embeds: [errorEmbed("Nenhuma enquete ativa foi encontrada.")], ephemeral: true });
+      return interaction.reply({ embeds: [errorEmbed("Nenhuma enquete ativa foi encontrada.")], flags: MessageFlags.Ephemeral });
     }
 
     if (entry.poll.closed) {
-      return interaction.reply({ embeds: [errorEmbed("Esta enquete já está encerrada.")], ephemeral: true });
+      return interaction.reply({ embeds: [errorEmbed("Esta enquete já está encerrada.")], flags: MessageFlags.Ephemeral });
     }
 
     const updated = updatePoll(entry.messageId, (p) => {
@@ -135,6 +135,6 @@ export async function execute(interaction) {
       }
     }
 
-    return interaction.reply({ embeds: [successEmbed("Enquete encerrada.")], ephemeral: true });
+    return interaction.reply({ embeds: [successEmbed("Enquete encerrada.")], flags: MessageFlags.Ephemeral });
   }
 }

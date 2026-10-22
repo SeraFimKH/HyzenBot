@@ -1,3 +1,4 @@
+import { MessageFlags } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { getRaffle, updateRaffle } from "../database/raffles.js";
 import { allPendingPayments } from "../database/pixPayments.js";
@@ -24,13 +25,13 @@ export async function joinRaffle(interaction) {
   const raffle = getRaffle(guildId);
 
   if (!raffle || raffle.status !== "open") {
-    return interaction.reply({ embeds: [errorEmbed("Não há nenhum sorteio ativo no momento.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Não há nenhum sorteio ativo no momento.")], flags: MessageFlags.Ephemeral });
   }
 
   if (raffle.entryMode === "convite") {
     return interaction.reply({
       embeds: [errorEmbed("Este sorteio é só por convite — use `/convite link` pra pegar seu link e ganhar entradas convidando pessoas.")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -38,7 +39,7 @@ export async function joinRaffle(interaction) {
   if (entryCount >= raffle.maxEntriesPerMember) {
     return interaction.reply({
       embeds: [errorEmbed(`Você já atingiu o limite de ${raffle.maxEntriesPerMember} entrada(s) neste sorteio.`)],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -49,7 +50,7 @@ export async function joinRaffle(interaction) {
     await updateRafflePanel(interaction.client, updated);
     return interaction.reply({
       embeds: [successEmbed(`Presença confirmada no sorteio de **${raffle.game}**! Seu bilhete: **#${updated.participants.length}**. Boa sorte 🍀`)],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -59,11 +60,11 @@ export async function joinRaffle(interaction) {
   if (alreadyPending) {
     return interaction.reply({
       embeds: [errorEmbed("Você já tem uma cobrança pendente para este sorteio. Verifique seu privado.")],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     const dm = await interaction.user.createDM();

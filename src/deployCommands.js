@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { REST, Routes } from "discord.js";
 import { config } from "./config.js";
+import { commandJson } from "./handlers/loadCommands.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const commandsPath = path.join(__dirname, "commands");
@@ -11,7 +12,7 @@ const files = fs.readdirSync(commandsPath).filter((file) => file.endsWith(".js")
 const commands = [];
 for (const file of files) {
   const command = await import(pathToFileURL(path.join(commandsPath, file)).href);
-  commands.push(command.data.toJSON());
+  commands.push(commandJson(command));
 }
 
 const rest = new REST({ version: "10" }).setToken(config.token);

@@ -1,3 +1,4 @@
+import { MessageFlags } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { findLinkedPlayerName } from "../database/auth.js";
 import { grantBetaAccess } from "../database/betaGrants.js";
@@ -51,15 +52,15 @@ function alreadyRegistered(registration) {
 // The panel's button.
 export async function handleOpen(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
-  if (!cfg.channels.preRegistroAprovacao) return interaction.reply({ embeds: [notConfigured()], ephemeral: true });
+  if (!cfg.channels.preRegistroAprovacao) return interaction.reply({ embeds: [notConfigured()], flags: MessageFlags.Ephemeral });
   const active = findActiveRegistration(interaction.guildId, interaction.user.id);
-  if (active) return interaction.reply({ embeds: [alreadyRegistered(active)], ephemeral: true });
+  if (active) return interaction.reply({ embeds: [alreadyRegistered(active)], flags: MessageFlags.Ephemeral });
   await interaction.showModal(buildRegistrationModal());
 }
 
 // The form: the request's card goes to the approval channel.
 export async function handleModalSubmit(interaction) {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const cfg = getGuildConfig(interaction.guildId);
   if (!cfg.channels.preRegistroAprovacao) return interaction.editReply({ embeds: [notConfigured()] });
 
@@ -109,7 +110,7 @@ export async function handleModalSubmit(interaction) {
 // button expects it (waiting, for Aprovar / Recusar; approved, for Remover).
 async function openRequest(interaction, prefix, expected = RegistrationStatus.PENDING) {
   const { guildId, number } = parseRegistrationId(interaction.customId, prefix);
-  const reply = (embed) => interaction.reply({ embeds: [embed], ephemeral: true }).then(() => null);
+  const reply = (embed) => interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral }).then(() => null);
   if (!isAdmin(interaction.member, getGuildConfig(interaction.guildId))) return reply(errorEmbed("Só os administradores cuidam do pré-registro."));
   const registration = getRegistration(guildId, number);
   if (!registration) return reply(errorEmbed(`Não encontrei o pré-registro #${number}.`));
@@ -136,11 +137,11 @@ export async function handleRemoveSubmit(interaction) {
     try {
       const result = await removeBetaTester(interaction.client, interaction.guildId, { name: request.registration.name, staffId: interaction.user.id, reason });
       if (result.tagFailed) {
-        await interaction.followUp({ embeds: [errorEmbed("Removido, mas não consegui tirar a tag de beta no jogo agora (Redis fora do ar) — tire com `/tagadmin revoke` no jogo.")], ephemeral: true });
+        await interaction.followUp({ embeds: [errorEmbed("Removido, mas não consegui tirar a tag de beta no jogo agora (Redis fora do ar) — tire com `/tagadmin revoke` no jogo.")], flags: MessageFlags.Ephemeral });
       }
     } catch (err) {
       if (!(err instanceof StatusTableMissingError)) console.error("[betaRegistration] failed to remove", err);
-      await interaction.followUp({ embeds: [errorEmbed("Não consegui tirar dos beta testers agora. Tente de novo em instantes.")], ephemeral: true });
+      await interaction.followUp({ embeds: [errorEmbed("Não consegui tirar dos beta testers agora. Tente de novo em instantes.")], flags: MessageFlags.Ephemeral });
     }
   });
 }
@@ -160,7 +161,7 @@ export async function handleApprove(interaction) {
           ? "O banco ainda não tem a parte do pré-registro. Ela é criada pelo **HyzenCore** atualizado quando o servidor liga — atualize o plugin, ligue o servidor uma vez e tente de novo."
           : "Não consegui liberar o nick no banco de dados. Tente de novo em instantes.";
       if (!(err instanceof StatusTableMissingError)) console.error("[betaRegistration] failed to grant", err);
-      return interaction.followUp({ embeds: [errorEmbed(message)], ephemeral: true });
+      return interaction.followUp({ embeds: [errorEmbed(message)], flags: MessageFlags.Ephemeral });
     }
     await answer(interaction, guildId, number, RegistrationStatus.APPROVED, null);
   });

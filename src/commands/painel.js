@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import { getGuildConfig } from "../database/guildConfig.js";
 import { isAdmin } from "../utils/permissions.js";
 import { errorEmbed } from "../utils/embeds.js";
@@ -12,8 +12,8 @@ export async function execute(interaction) {
   const cfg = getGuildConfig(interaction.guildId);
 
   if (!isAdmin(interaction.member, cfg)) {
-    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para usar este comando.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você não tem permissão para usar este comando.")], flags: MessageFlags.Ephemeral });
   }
 
-  await interaction.reply({ ...buildMainPanel(cfg, interaction), ephemeral: true });
+  await interaction.reply({ ...buildMainPanel(cfg, interaction), flags: MessageFlags.Ephemeral });
 }

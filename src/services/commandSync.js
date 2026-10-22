@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { commandJson } from "../handlers/loadCommands.js";
 
 // With DISCORD_GUILD_ID set the slash commands are per server, and the deploy script only registers them in that one
 // — but the players' server, the admin server and the beta server all need them. So the bot registers the same commands
@@ -6,7 +7,7 @@ import { config } from "../config.js";
 // they're global (deployCommands.js) and already everywhere: nothing to do here.
 export async function syncGuildCommands(client, guilds = [...client.guilds.cache.values()]) {
   if (!config.guildId) return;
-  const body = [...client.commands.values()].map((command) => command.data.toJSON());
+  const body = [...client.commands.values()].map(commandJson);
   let synced = 0;
   for (const guild of guilds) {
     try {
@@ -18,4 +19,21 @@ export async function syncGuildCommands(client, guilds = [...client.guilds.cache
     }
   }
   if (synced) console.log(`[commandSync] ${body.length} comando(s) registrado(s) em ${synced} servidor(es).`);
+}
+
+// Per server, global commands are leftovers from a deploy made without DISCORD_GUILD_ID: every command showed twice in the
+// servers, and in DMs too — where /painel broke, with no server and no member to check. Cleared at startup.
+export async function clearGlobalCommands(client) {
+  if (!config.guildId) return;
+  const global = await client.application.commands.fetch().catch((err) => {
+    console.error("[commandSync] não consegui ler os comandos globais:", err.message);
+    return null;
+  });
+  if (!global?.size) return;
+  try {
+    await client.application.commands.set([]);
+    console.log(`[commandSync] ${global.size} comando(s) global(is) antigo(s) removido(s) — os comandos ficam só nos servidores.`);
+  } catch (err) {
+    console.error("[commandSync] não consegui remover os comandos globais:", err.message);
+  }
 }

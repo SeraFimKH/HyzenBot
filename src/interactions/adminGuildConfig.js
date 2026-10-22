@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder, ChannelType, StringSelectMenuBuilder } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder, ChannelType, MessageFlags, StringSelectMenuBuilder } from "discord.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { CHANNEL_LABELS } from "../utils/configEmbed.js";
 import { baseEmbed, errorEmbed } from "../utils/embeds.js";
@@ -86,7 +86,7 @@ export async function handleAdminGuildSelect(interaction) {
   const guild = interaction.client.guilds.cache.get(guildId);
   const member = guild && guildId !== interaction.guildId ? await guild.members.fetch(interaction.user.id).catch(() => null) : null;
   if (!member || !canManage(member)) {
-    return interaction.reply({ embeds: [errorEmbed("Você precisa ser administrador nesse servidor para vincular ele.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Você precisa ser administrador nesse servidor para vincular ele.")], flags: MessageFlags.Ephemeral });
   }
 
   let cleared = [];
@@ -166,7 +166,7 @@ export async function handleRemoteChannelSelect(interaction) {
   const admin = getAdminGuild(interaction.client, cfg);
   const channel = admin?.channels.cache.get(interaction.values[0]);
   if (!isLogChannelKey(tipo) || !channel || !canPostLogs(channel)) {
-    return interaction.reply({ embeds: [errorEmbed("Esse canal não está mais disponível no servidor administrativo. Abra o `/painel` de novo.")], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed("Esse canal não está mais disponível no servidor administrativo. Abra o `/painel` de novo.")], flags: MessageFlags.Ephemeral });
   }
   const updated = updateGuildConfig(interaction.guildId, (c) => {
     c.channels[tipo] = channel.id;
