@@ -60,14 +60,20 @@ export function startReportFeed(client) {
   }, SWEEP_INTERVAL_MS);
 }
 
+// The game's and the site's reports are read apart: one table failing (the bot's database user without access to the
+// site's table, say) doesn't stop the other.
 async function sweep(client) {
   const names = new Map();
-  for (const row of await readNewRows("lastGameReportId", latestGameReportId, findGameReportsAfter)) {
-    await safely(`game report #${row.id}`, () => announce(client, GAME, row, names));
-  }
-  for (const row of await readNewRows("lastWebReportId", latestWebReportId, findWebReportsAfter)) {
-    await safely(`site report #${row.id}`, () => announce(client, SITE, row, names));
-  }
+  await safely("game reports", async () => {
+    for (const row of await readNewRows("lastGameReportId", latestGameReportId, findGameReportsAfter)) {
+      await safely(`game report #${row.id}`, () => announce(client, GAME, row, names));
+    }
+  });
+  await safely("site reports", async () => {
+    for (const row of await readNewRows("lastWebReportId", latestWebReportId, findWebReportsAfter)) {
+      await safely(`site report #${row.id}`, () => announce(client, SITE, row, names));
+    }
+  });
   await markDecided(client, names);
 }
 
@@ -129,15 +135,17 @@ async function markDecided(client, names) {
 
   const oldest = Date.now() - TRACK_DAYS * 24 * 60 * 60 * 1000;
   const idsOf = (origin) => keys.filter((key) => key.startsWith(`${origin}:`)).map((key) => key.slice(origin.length + 1));
-  const decided = [
-    ...(await findResolvedGameReports(idsOf(GAME))).map((row) => ({ key: `${GAME}:${row.id}`, verdict: VERDICTS.resolved, staffId: row.resolved_by })),
-    ...(await findJudgedWebReports(idsOf(SITE))).map((row) => ({
-      key: `${SITE}:${row.id}`,
-      verdict: VERDICTS[row.status] ?? VERDICTS.rejected,
-      staffId: row.handled_by,
-      note: row.staff_note,
-    })),
-  ];
+  const decided = [];
+  await safely("resolved game reports", async () => {
+    for (const row of await findResolvedGameReports(idsOf(GAME))) {
+      decided.push({ key: `${GAME}:${row.id}`, verdict: VERDICTS.resolved, staffId: row.resolved_by });
+    }
+  });
+  await safely("judged site reports", async () => {
+    for (const row of await findJudgedWebReports(idsOf(SITE))) {
+      decided.push({ key: `${SITE}:${row.id}`, verdict: VERDICTS[row.status] ?? VERDICTS.rejected, staffId: row.handled_by, note: row.staff_note });
+    }
+  });
 
   for (const { key, verdict, staffId, note } of decided) {
     await safely(`verdict ${key}`, async () => {
