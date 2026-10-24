@@ -6,6 +6,7 @@ import { pool } from "./database/pool.js";
 import { startGameEventsListener } from "./services/gameEvents.js";
 import { startExpirySweep } from "./services/expirySweep.js";
 import { startPunishmentFeed } from "./services/punishmentFeed.js";
+import { startReportFeed } from "./services/reportFeed.js";
 
 const client = new Client({
   intents: [
@@ -29,6 +30,7 @@ client.login(config.token).catch((err) => {
 startGameEventsListener(client);
 startExpirySweep(client);
 startPunishmentFeed(client);
+startReportFeed(client);
 
 // Sem este listener, o Node derruba o processo inteiro sempre que o discord.js
 // emite 'error' internamente (ex: erro assíncrono não tratado num handler de evento)

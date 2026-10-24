@@ -13,6 +13,8 @@ export const config = {
   clientId: process.env.DISCORD_CLIENT_ID,
   guildId: process.env.DISCORD_GUILD_ID || null,
   brandColor: 0x1f6f63,
+  // The network's site (HyzenWeb): the report feed links each report to its page in the site's admin and to its proof.
+  siteUrl: (process.env.SITE_URL || "https://hyzen.com.br").replace(/\/+$/, ""),
   mercadoPagoAccessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || null,
   openaiApiKey: process.env.OPENAI_API_KEY || null,
   pg: {

@@ -56,6 +56,7 @@ const CHANNEL_TIPO_LABELS = {
   banLog: "🔨 Canal de Logs de Banimento",
   muteLog: "🔇 Canal de Logs de Mute",
   warnLog: "⚠️ Canal de Logs de Advertência",
+  reportLog: "🚩 Canal de Denúncias",
   winLog: "🏆 Canal de Logs de Vitória",
   status: "📊 Canal do Painel de Status",
   sugestoes: "💡 Canal de Sugestões",

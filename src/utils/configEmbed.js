@@ -14,6 +14,7 @@ export const CHANNEL_LABELS = {
   banLog: "🔨 Canal de logs de banimento",
   muteLog: "🔇 Canal de logs de mute",
   warnLog: "⚠️ Canal de logs de advertência",
+  reportLog: "🚩 Canal de denúncias",
   winLog: "🏆 Canal de logs de vitória",
   status: "📊 Canal do painel de status",
   sugestoes: "💡 Canal de sugestões",

@@ -65,6 +65,7 @@ function defaultConfig() {
       banLog: null,
       muteLog: null,
       warnLog: null,
+      reportLog: null,
       winLog: null,
       status: null,
       sugestoes: null,

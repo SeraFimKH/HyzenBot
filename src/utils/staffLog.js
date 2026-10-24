@@ -46,15 +46,24 @@ export function punishmentLogEmbed({ title, color, player, staffTag, reason, ext
 // no "staff member who did it right now" to scope it to) — posts to every guild that configured the channel. Once per
 // channel: the players' server and the admin server both pointing at the same log channel would post everything twice.
 export async function broadcastStaffLog(client, channelKey, embed) {
+  await broadcastLog(client, channelKey, { embeds: [embed] });
+}
+
+// Any message to every guild's channel for that key, once per channel. Resolves to the messages posted, so a caller
+// can edit them later (the report feed marks a report once the staff decides it).
+export async function broadcastLog(client, channelKey, payload) {
   const targets = new Map();
   for (const guild of client.guilds.cache.values()) {
     const cfg = getGuildConfig(guild.id);
     const channelId = cfg.channels[channelKey];
     if (channelId && !targets.has(channelId)) targets.set(channelId, logGuildIds(guild.id, cfg));
   }
+  const posted = [];
   for (const [channelId, allowedGuildIds] of targets) {
-    await sendLog(client, channelId, allowedGuildIds, channelKey, { embeds: [embed] });
+    const message = await sendLog(client, channelId, allowedGuildIds, channelKey, payload);
+    if (message) posted.push(message);
   }
+  return posted;
 }
 
 // Best-effort DM to the punished player — silently does nothing if they never linked their account via

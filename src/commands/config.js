@@ -45,6 +45,7 @@ export const data = new SlashCommandBuilder()
             { name: "Logs de Banimento", value: "banLog" },
             { name: "Logs de Mute", value: "muteLog" },
             { name: "Logs de Advertência", value: "warnLog" },
+            { name: "Denúncias (jogo e site)", value: "reportLog" },
             { name: "Logs de Vitória", value: "winLog" },
             { name: "Painel de Status do Servidor", value: "status" },
             { name: "Sugestões", value: "sugestoes" },
