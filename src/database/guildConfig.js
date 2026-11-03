@@ -73,6 +73,9 @@ function defaultConfig() {
       // /painel → Servidor do Jogo: the pre-registration panel, and where the staff approves the requests.
       preRegistro: null,
       preRegistroAprovacao: null,
+      // /painel → Bate-ponto: the panel with the buttons, and where approvals, warnings and reports go.
+      clockPanel: null,
+      clockLog: null,
     },
     // /painel → Servidor Administrativo: another Discord server the log channels may point at (utils/linkedGuilds.js).
     adminGuildId: null,
@@ -105,6 +108,18 @@ function defaultConfig() {
     // /painel → Cargo de Beta Tester (services/betaRole.js). Given: who the bot gave it to, discord id → the tester's name.
     betaRoleId: null,
     betaRoleGiven: {},
+    // /painel → Bate-ponto (services/clock.js). clockRoles: who has to clock. clockAdminRoles: besides the admins, who
+    // sees the team's presence and answers records. The rest is what the clock remembers by itself.
+    clockRoles: [],
+    clockAdminRoles: [],
+    clockInactiveDays: 5,
+    clockMaxHours: 16,
+    clockSince: null,
+    clockLastReportWeek: null,
+    clockLastAlertDay: null,
+    clockAlerted: {},
+    clockPanelChannelId: null,
+    clockPanelMessageId: null,
     serverIp: null,
     serverPort: null,
     statusPanelMessageId: null,

@@ -21,6 +21,8 @@ export const CHANNEL_LABELS = {
   sugestoesLog: "🗳️ Canal de logs de sugestões",
   preRegistro: "📝 Canal do pré-registro",
   preRegistroAprovacao: "🛂 Canal de aprovação do pré-registro",
+  clockPanel: "🕒 Canal do painel de ponto",
+  clockLog: "📊 Canal de relatórios do ponto",
 };
 
 const channelOrNone = (id) => (id ? `<#${id}>` : "*(não definido)*");

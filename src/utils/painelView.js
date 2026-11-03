@@ -13,6 +13,7 @@ const LOG_OPTIONS = [
   { key: "winLog", label: "Logs de Vitória", emoji: "🏆" },
   { key: "sugestoesLog", label: "Logs de Sugestões", emoji: "🗳️" },
   { key: "preRegistroAprovacao", label: "Aprovação do Pré-registro", emoji: "🛂" },
+  { key: "clockLog", label: "Relatórios do Ponto", emoji: "📊" },
 ];
 
 const CATEGORIES = [
@@ -134,6 +135,20 @@ const CATEGORIES = [
       { label: "Canal do Pré-registro", description: "Onde fica o botão para pedir para ser beta tester", value: "canal_preRegistro", emoji: "📝" },
       { label: "Canal de Aprovação do Pré-registro", description: "Onde a equipe aprova ou recusa os pedidos (pode ser no servidor admin)", value: "canal_preRegistroAprovacao", emoji: "🛂" },
       { label: "Publicar Painel de Pré-registro", description: "Posta o botão de novo no canal (depois de mudar os textos)", value: "publicar_preregistro", emoji: "📌" },
+    ],
+  },
+  {
+    id: "ponto",
+    label: "Bate-ponto",
+    emoji: "🕒",
+    description: "Quem marca presença, painel, relatórios e avisos da equipe",
+    options: [
+      { label: "Cargos que marcam presença", description: "Os grupos da equipe que precisam bater ponto", value: "cargo_clockTeam", emoji: "👥" },
+      { label: "Cargos que veem o painel", description: "Além dos admins: quem acompanha a equipe e aprova registros", value: "cargo_clockAdmin", emoji: "🛡️" },
+      { label: "Canal do Painel de Ponto", description: "Onde ficam os botões de iniciar e finalizar", value: "canal_clockPanel", emoji: "🕒" },
+      { label: "Publicar Painel de Ponto", description: "Posta os botões no canal escolhido", value: "publicar_ponto", emoji: "📌" },
+      { label: "Canal de Relatórios e Avisos", description: "Aprovações, relatório semanal e inativos (pode ser no servidor admin)", value: "canal_clockLog", emoji: "📊" },
+      { label: "Configurar Avisos", description: "Dias sem presença até avisar e tempo máximo de um ponto", value: "ponto_config", emoji: "⚙️" },
     ],
   },
   {

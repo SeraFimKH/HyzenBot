@@ -4,7 +4,7 @@ import { ChannelType, PermissionsBitField } from "discord.js";
 // staff and its logs in another. Linked in /painel → Servidor Administrativo; from then on every staff channel
 // (LOG_CHANNEL_KEYS: the logs and the pre-registration approvals) can be a channel there. What the players use
 // (tickets, suggestions, status, the pre-registration panel) stays here.
-export const LOG_CHANNEL_KEYS = ["ticketLog", "paymentLog", "banLog", "muteLog", "warnLog", "reportLog", "winLog", "sugestoesLog", "preRegistroAprovacao"];
+export const LOG_CHANNEL_KEYS = ["ticketLog", "paymentLog", "banLog", "muteLog", "warnLog", "reportLog", "winLog", "sugestoesLog", "preRegistroAprovacao", "clockLog"];
 
 const { Flags } = PermissionsBitField;
 const POST_PERMISSIONS = [Flags.ViewChannel, Flags.SendMessages, Flags.EmbedLinks];

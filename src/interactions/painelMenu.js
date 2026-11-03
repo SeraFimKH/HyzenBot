@@ -32,6 +32,8 @@ import { handleOpenTextModal } from "./textConfig.js";
 import { buildStatusModeView } from "./statusConfig.js";
 import { refreshServerStatus } from "../services/serverStatus.js";
 import { betaRoleProblem, setBetaRole } from "../services/betaRole.js";
+import { publishClockPanel } from "../services/clock.js";
+import { openConfigModal as openClockConfigModal } from "./clockAdmin.js";
 import { handleOpenSuggestionConfigModal, publishSuggestionPanel } from "./suggestionConfig.js";
 import { handleSupportMenu, MENU_PREFIX as SUPPORT_MENU_PREFIX } from "./supportConfig.js";
 import { buildAdminGuildView, buildLogChannelView } from "./adminGuildConfig.js";
@@ -62,6 +64,7 @@ const CHANNEL_TIPO_LABELS = {
   status: "📊 Canal do Painel de Status",
   sugestoes: "💡 Canal de Sugestões",
   preRegistro: "📝 Canal do Pré-registro",
+  clockPanel: "🕒 Canal do Painel de Ponto",
 };
 
 const CARGO_TIPO_LABELS = {
@@ -70,6 +73,8 @@ const CARGO_TIPO_LABELS = {
   verificado: "✅ Cargo de Verificado",
   anuncio: "🔔 Cargo de Menção em Anúncios",
   beta: "🧪 Cargo de Beta Tester",
+  clockTeam: "👥 Cargos que marcam presença",
+  clockAdmin: "🛡️ Cargos que veem o painel do ponto",
 };
 
 function backButton() {
@@ -132,9 +137,13 @@ function buildRoleSelectView(tipo, cfg) {
           ? cfg.betaRoleId
             ? [cfg.betaRoleId]
             : []
-          : tipo === "admin"
-            ? cfg.adminRoles
-            : cfg.staffRoles;
+          : tipo === "clockTeam"
+            ? cfg.clockRoles
+            : tipo === "clockAdmin"
+              ? cfg.clockAdminRoles
+              : tipo === "admin"
+                ? cfg.adminRoles
+                : cfg.staffRoles;
 
   const menu = new RoleSelectMenuBuilder()
     .setCustomId(`painel_role_${tipo}`)
@@ -147,6 +156,8 @@ function buildRoleSelectView(tipo, cfg) {
   const descriptions = {
     verificado: 'Selecione o cargo que será dado a quem clicar em "Aceitar" nas regras. Configure as permissões desse cargo no Discord pra liberar os canais que quiser.',
     anuncio: "Selecione o cargo mencionado quando um sorteio, enquete ou aviso é publicado. Escolha o cargo @everyone pra marcar todo mundo. Deixe vazio pra não marcar ninguém.",
+    clockTeam: "Selecione os grupos da equipe que precisam marcar presença. Só quem tem um deles usa os botões do ponto e aparece nos relatórios e nos avisos de inatividade.",
+    clockAdmin: "Além dos administradores, quem vê a presença da equipe e aprova ou recusa registros manuais. Deixe vazio para ficar só com os administradores.",
     beta: "Selecione o cargo que o bot dá a quem é beta tester no jogo, e tira quando deixa de ser. A pessoa precisa ter vinculado a conta com /verificar, ou ter sido aprovada pelo pré-registro. O cargo do bot precisa estar acima desse na lista de cargos. Deixe vazio pra desligar.",
   };
 
@@ -507,6 +518,16 @@ export async function handleMenuSelect(interaction) {
     return handleBetaMenu(interaction, value);
   }
 
+  if (value === "ponto_config") {
+    return openClockConfigModal(interaction);
+  }
+
+  if (value === "publicar_ponto") {
+    await interaction.deferUpdate();
+    const embed = await publishClockPanel(interaction.client, interaction.guildId);
+    return interaction.editReply({ embeds: [embed], components: [backRow()] });
+  }
+
   if (value === "publicar_preregistro") {
     await interaction.deferUpdate();
     const embed = await publishBetaRegistrationPanel(interaction.client, interaction.guildId);
@@ -662,6 +683,10 @@ export async function handleRoleSelect(interaction) {
       c.verifiedRoleId = roleIds[0] || null;
     } else if (tipo === "anuncio") {
       c.announcePingRoleId = roleIds[0] || null;
+    } else if (tipo === "clockTeam") {
+      c.clockRoles = roleIds;
+    } else if (tipo === "clockAdmin") {
+      c.clockAdminRoles = roleIds;
     }
   });
 
