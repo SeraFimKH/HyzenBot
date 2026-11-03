@@ -7,6 +7,8 @@ const PERMISSION_NAMES = new Map([
   [Flags.ViewChannel, "Ver canal"],
   [Flags.SendMessages, "Enviar mensagens"],
   [Flags.EmbedLinks, "Inserir links"],
+  [Flags.AttachFiles, "Anexar arquivos"],
+  [Flags.MentionEveryone, "Mencionar @everyone, @here e todos os cargos"],
   [Flags.ReadMessageHistory, "Ver histórico de mensagens"],
   [Flags.SendPolls, "Criar enquetes"],
   [Flags.CreatePublicThreads, "Criar tópicos públicos"],

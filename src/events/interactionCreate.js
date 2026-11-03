@@ -4,6 +4,7 @@ import * as ticketButtons from "../interactions/ticketButtons.js";
 import * as pollButtons from "../interactions/pollButtons.js";
 import * as feedModal from "../interactions/feedModal.js";
 import * as avisoModal from "../interactions/avisoModal.js";
+import * as sayPanel from "../interactions/sayPanel.js";
 import * as painelMenu from "../interactions/painelMenu.js";
 import * as feedButton from "../interactions/feedButton.js";
 import * as pixButtons from "../interactions/pixButtons.js";
@@ -78,12 +79,14 @@ export async function execute(interaction) {
       if (customId.startsWith(preRegistration.REMOVE_PREFIX)) return await betaRegistration.handleRemove(interaction);
       if (customId === "auth:start") return await handleAuthStart(interaction);
       if (customId === "auth:check") return await handleAuthCheck(interaction);
+      if (customId.startsWith(sayPanel.ID_PREFIX)) return await sayPanel.handleButton(interaction);
       return;
     }
 
     if (interaction.isModalSubmit()) {
       if (interaction.customId.startsWith("feed_modal")) return await feedModal.handle(interaction);
       if (interaction.customId === "aviso_modal") return await avisoModal.handle(interaction);
+      if (interaction.customId === sayPanel.MODAL_ID) return await sayPanel.handleModalSubmit(interaction);
       if (interaction.customId === "painel_tipoticket_add_modal") return await painelMenu.handleTipoTicketAddModal(interaction);
       if (interaction.customId.startsWith(painelMenu.TIPO_TICKET_EDIT_MODAL_PREFIX)) return await painelMenu.handleTipoTicketEditModal(interaction);
       if (interaction.customId === "pix_modal") return await pixButtons.handlePixModalSubmit(interaction);
@@ -111,6 +114,7 @@ export async function execute(interaction) {
     if (interaction.isStringSelectMenu()) {
       if (interaction.customId === "painel_categoria") return await painelMenu.handleCategorySelect(interaction);
       if (interaction.customId === "painel_menu") return await painelMenu.handleMenuSelect(interaction);
+      if (interaction.customId === sayPanel.COLOR_SELECT_ID) return await sayPanel.handleSelect(interaction);
       // ticket_type_select: o menu antigo, que aparecia só para quem clicava no botão.
       if (interaction.customId === "ticket_open_select" || interaction.customId === "ticket_type_select") return await ticketButtons.handleTypeSelected(interaction);
       if (interaction.customId === "painel_tipoticket_remover") return await painelMenu.handleTipoTicketRemoveSelect(interaction);
@@ -123,11 +127,13 @@ export async function execute(interaction) {
 
     if (interaction.isChannelSelectMenu()) {
       if (interaction.customId.startsWith("painel_channel_")) return await painelMenu.handleChannelSelect(interaction);
+      if (interaction.customId === sayPanel.CHANNEL_SELECT_ID) return await sayPanel.handleSelect(interaction);
       return;
     }
 
     if (interaction.isRoleSelectMenu()) {
       if (interaction.customId.startsWith("painel_role_")) return await painelMenu.handleRoleSelect(interaction);
+      if (interaction.customId === sayPanel.PING_SELECT_ID) return await sayPanel.handleSelect(interaction);
       if (interaction.customId.startsWith(supportConfig.ROLE_SELECT_PREFIX)) return await supportConfig.handleRoleSelect(interaction);
       return;
     }
