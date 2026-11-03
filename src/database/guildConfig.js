@@ -102,6 +102,9 @@ function defaultConfig() {
     verifiedRoleId: null,
     texts: {},
     announcePingRoleId: null,
+    // /painel → Cargo de Beta Tester (services/betaRole.js). Given: who the bot gave it to, discord id → the tester's name.
+    betaRoleId: null,
+    betaRoleGiven: {},
     serverIp: null,
     serverPort: null,
     statusPanelMessageId: null,

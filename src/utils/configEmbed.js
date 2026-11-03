@@ -101,6 +101,11 @@ export function buildConfigSummaryEmbed(cfg, context = null) {
         inline: true,
       },
       {
+        name: "🧪 Cargo de beta tester",
+        value: cfg.betaRoleId ? `<@&${cfg.betaRoleId}>` : "*(não definido)*",
+        inline: true,
+      },
+      {
         name: "🤖 IA no ticket",
         value: cfg.aiEnabled ? "🟢 Ativada" : cfg.aiApiKey ? "⚪ Desativada (chave configurada)" : "⚪ Desativada (sem chave)",
         inline: true,

@@ -12,7 +12,7 @@ import {
   MessageFlags,
 } from "discord.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
-import { baseEmbed } from "../utils/embeds.js";
+import { baseEmbed, errorEmbed } from "../utils/embeds.js";
 import { buildMainPanel, findCategory } from "../utils/painelView.js";
 import { publishTicketPanel, refreshTicketPanel } from "../utils/ticketPanel.js";
 import {
@@ -31,6 +31,7 @@ import { handleOpenAiKeyModal, handleOpenAiContextModal, buildAiToggleView } fro
 import { handleOpenTextModal } from "./textConfig.js";
 import { buildStatusModeView } from "./statusConfig.js";
 import { refreshServerStatus } from "../services/serverStatus.js";
+import { betaRoleProblem, setBetaRole } from "../services/betaRole.js";
 import { handleOpenSuggestionConfigModal, publishSuggestionPanel } from "./suggestionConfig.js";
 import { handleSupportMenu, MENU_PREFIX as SUPPORT_MENU_PREFIX } from "./supportConfig.js";
 import { buildAdminGuildView, buildLogChannelView } from "./adminGuildConfig.js";
@@ -68,6 +69,7 @@ const CARGO_TIPO_LABELS = {
   staff: "🙋 Cargos Staff",
   verificado: "✅ Cargo de Verificado",
   anuncio: "🔔 Cargo de Menção em Anúncios",
+  beta: "🧪 Cargo de Beta Tester",
 };
 
 function backButton() {
@@ -116,7 +118,7 @@ function buildChannelSelectView(tipo, cfg) {
 }
 
 function buildRoleSelectView(tipo, cfg) {
-  const isSingleSelect = tipo === "verificado" || tipo === "anuncio";
+  const isSingleSelect = tipo === "verificado" || tipo === "anuncio" || tipo === "beta";
   const currentIds =
     tipo === "verificado"
       ? cfg.verifiedRoleId
@@ -126,9 +128,13 @@ function buildRoleSelectView(tipo, cfg) {
         ? cfg.announcePingRoleId
           ? [cfg.announcePingRoleId]
           : []
-        : tipo === "admin"
-          ? cfg.adminRoles
-          : cfg.staffRoles;
+        : tipo === "beta"
+          ? cfg.betaRoleId
+            ? [cfg.betaRoleId]
+            : []
+          : tipo === "admin"
+            ? cfg.adminRoles
+            : cfg.staffRoles;
 
   const menu = new RoleSelectMenuBuilder()
     .setCustomId(`painel_role_${tipo}`)
@@ -141,6 +147,7 @@ function buildRoleSelectView(tipo, cfg) {
   const descriptions = {
     verificado: 'Selecione o cargo que será dado a quem clicar em "Aceitar" nas regras. Configure as permissões desse cargo no Discord pra liberar os canais que quiser.',
     anuncio: "Selecione o cargo mencionado quando um sorteio, enquete ou aviso é publicado. Escolha o cargo @everyone pra marcar todo mundo. Deixe vazio pra não marcar ninguém.",
+    beta: "Selecione o cargo que o bot dá a quem é beta tester no jogo, e tira quando deixa de ser. A pessoa precisa ter vinculado a conta com /verificar, ou ter sido aprovada pelo pré-registro. O cargo do bot precisa estar acima desse na lista de cargos. Deixe vazio pra desligar.",
   };
 
   return {
@@ -644,6 +651,8 @@ export async function handleRoleSelect(interaction) {
   const tipo = interaction.customId.replace("painel_role_", "");
   const roleIds = interaction.values;
 
+  if (tipo === "beta") setBetaRole(interaction.client, interaction.guildId, roleIds[0] || null);
+
   const cfg = updateGuildConfig(interaction.guildId, (c) => {
     if (tipo === "admin") {
       c.adminRoles = roleIds;
@@ -657,6 +666,9 @@ export async function handleRoleSelect(interaction) {
   });
 
   await interaction.update(buildMainPanel(cfg, interaction));
+
+  const problem = tipo === "beta" && roleIds[0] ? betaRoleProblem(interaction.guild, roleIds[0]) : null;
+  if (problem) await interaction.followUp({ embeds: [errorEmbed(problem)], flags: MessageFlags.Ephemeral });
 }
 
 export async function handlePixTestToggle(interaction) {

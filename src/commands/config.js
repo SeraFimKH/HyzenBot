@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, ChannelType, MessageFlags } from "discord.js";
-import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
+import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
+import { betaRoleProblem, setBetaRole } from "../services/betaRole.js";
 import { isAdmin } from "../utils/permissions.js";
 import { errorEmbed, successEmbed } from "../utils/embeds.js";
 import { buildConfigSummaryEmbed, CHANNEL_LABELS } from "../utils/configEmbed.js";
@@ -171,6 +172,12 @@ export const data = new SlashCommandBuilder()
       .setName("cargo-anuncio")
       .setDescription("Define o cargo (ou @everyone) mencionado em sorteio, enquete e aviso. Sem cargo = desativa.")
       .addRoleOption((opt) => opt.setName("cargo").setDescription("Cargo a mencionar (escolha @everyone pra marcar todo mundo)").setRequired(false)),
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName("cargo-beta")
+      .setDescription("Define o cargo dado no Discord a quem é beta tester no jogo. Sem cargo = desativa.")
+      .addRoleOption((opt) => opt.setName("cargo").setDescription("Cargo dos beta testers").setRequired(false)),
   )
   .addSubcommand((sub) =>
     sub
@@ -424,6 +431,23 @@ export async function execute(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed(`Cargo de verificado definido como ${cargo}. Quem clicar em "Aceitar" nas regras vai receber esse cargo — use as permissões do Discord pra liberar os canais que quiser pra ele.`)],
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+  if (sub === "cargo-beta") {
+    const cargo = interaction.options.getRole("cargo");
+    setBetaRole(interaction.client, interaction.guildId, cargo?.id || null);
+    const problem = cargo ? betaRoleProblem(interaction.guild, cargo.id) : null;
+    if (problem) return interaction.reply({ embeds: [errorEmbed(`Cargo salvo, mas ainda não funciona. ${problem}`)], flags: MessageFlags.Ephemeral });
+    return interaction.reply({
+      embeds: [
+        successEmbed(
+          cargo
+            ? `Quem é beta tester no jogo agora recebe ${cargo} em até 30 segundos, e perde quando deixar de ser. A pessoa precisa ter vinculado a conta com /verificar ou ter sido aprovada pelo pré-registro.`
+            : "Cargo de beta tester desativado.",
+        ),
+      ],
       flags: MessageFlags.Ephemeral,
     });
   }
