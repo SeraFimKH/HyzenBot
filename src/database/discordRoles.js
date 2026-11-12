@@ -1,8 +1,21 @@
 import { pool } from "./pool.js";
 
-// The Discord roles for the game's groups, chosen on the site (admin → Configurações → Cargos do Discord; the site's
-// migration creates both tables). The bot writes hyzen_discord_roles, the roles of each server it is in, so the site can
-// offer them by name, and reads hyzen_discord_group_roles, the role the staff picked for each group in each server.
+// The Discord roles for the game's groups and tags, chosen on the site (admin → Configurações → Cargos do Discord; the
+// site's migrations create the tables). The bot writes hyzen_discord_roles, the roles of each server it is in, so the site
+// can offer them by name, and reads hyzen_discord_group_roles and hyzen_discord_tag_roles, the roles the staff picked
+// for each group and each tag in each server.
+
+const MISSING_TABLE = "42P01";
+
+// The tags' half is newer than the groups' (and needs HyzenTags): until its tables exist it is just empty.
+async function rowsOrNone(query) {
+  try {
+    return (await pool.query(query)).rows;
+  } catch (err) {
+    if (err.code === MISSING_TABLE) return [];
+    throw err;
+  }
+}
 
 // Replaces what the site knows of one server's roles. roles: [{ id, name, color, position, editable, admin }].
 export async function publishRoles(guildId, guildName, roles) {
@@ -40,6 +53,17 @@ export async function forgetOtherServers(guildIds) {
 export async function listGroupRoles() {
   const result = await pool.query("SELECT group_id, guild_id, role_id FROM hyzen_discord_group_roles");
   return result.rows;
+}
+
+// [{ tag_id, guild_id, role_id }]
+export async function listTagRoles() {
+  return rowsOrNone("SELECT tag_id, guild_id, role_id FROM hyzen_discord_tag_roles");
+}
+
+// Every tag of everyone who linked their Discord: having it is enough, whether or not it's the one they show.
+// [{ discord_id, tag_id }]
+export async function listLinkedTags() {
+  return rowsOrNone("SELECT l.discord_id, pt.tag_id FROM hyzen_auth_links l JOIN hyzen_player_tags pt ON pt.player_id = l.player_id");
 }
 
 // Everyone who linked their Discord (/verificar), with the group they are in now: their rank while it lasts, the

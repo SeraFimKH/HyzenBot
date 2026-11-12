@@ -1,20 +1,28 @@
 import { PermissionFlagsBits } from "discord.js";
-import { forgetOtherServers, listGroupRoles, listLinkedGroups, publishRoles } from "../database/discordRoles.js";
+import {
+  forgetOtherServers,
+  listGroupRoles,
+  listLinkedGroups,
+  listLinkedTags,
+  listTagRoles,
+  publishRoles,
+} from "../database/discordRoles.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
 import { changeRole, warnOnce } from "../utils/roleChanges.js";
 
-// The game's groups as Discord roles, chosen on the site (admin → Configurações → Cargos do Discord), in every server
-// the bot is in: each group can get one or more roles per server. Every player who linked their Discord (/verificar)
-// gets the roles of their group, and loses them when the group ends (a VIP that expires) or changes. Like the beta
-// role, a role is only taken from who the bot gave it to (cfg.groupRolesGiven: discord id → role ids): roles the staff
-// gave by hand stay. Nobody tells the bot when a group changes (the game, the site and the shop all do it), so it looks
-// every little while. It also tells the site which roles each server has, so the staff picks them by name there.
-// A role with Administrator is never handed out, whatever the site says.
+// The game's groups and tags as Discord roles, chosen on the site (admin → Configurações → Cargos do Discord), in every
+// server the bot is in: each group and each tag can give one or more roles per server. Every player who linked their
+// Discord (/verificar) gets the roles of their group and of every tag they have, and loses them when the group ends (a
+// VIP that expires) or changes, or the tag is taken. Like the beta role, a role is only taken from who the bot gave it to
+// (cfg.groupRolesGiven: discord id → role ids, for groups and tags alike): roles the staff gave by hand stay. Nobody
+// tells the bot when a group or a tag changes (the game, the site and the shop all do it), so it looks every little
+// while. It also tells the site which roles each server has, so the staff picks them by name there. A role with
+// Administrator is never handed out, whatever the site says.
 
 const SYNC_INTERVAL_MS = 30_000;
 const TAG = "groupRoles";
-const GIVE_REASON = "Grupo no jogo (Hyzen)";
-const TAKE_REASON = "Não está mais no grupo no jogo (Hyzen)";
+const GIVE_REASON = "Grupo ou tag no jogo (Hyzen)";
+const TAKE_REASON = "Não tem mais o grupo ou a tag no jogo (Hyzen)";
 const MISSING_TABLE = "42P01";
 
 let running = false;
@@ -33,9 +41,25 @@ export async function syncGroupRoles(client) {
   running = true;
   try {
     await publishAll(client);
-    const [choices, linked] = await Promise.all([listGroupRoles(), listLinkedGroups()]);
+    const [groupChoices, tagChoices, linked, linkedTags] = await Promise.all([
+      listGroupRoles(),
+      listTagRoles(),
+      listLinkedGroups(),
+      listLinkedTags(),
+    ]);
+    const tagsOf = new Map();
+    for (const { discord_id: discordId, tag_id: tagId } of linkedTags) {
+      if (!tagsOf.has(discordId)) tagsOf.set(discordId, []);
+      tagsOf.get(discordId).push(String(tagId));
+    }
+    const players = linked.map(({ discord_id: discordId, group_id: groupId }) => ({
+      discordId,
+      groupId: String(groupId),
+      tagIds: tagsOf.get(discordId) ?? [],
+    }));
     for (const guild of client.guilds.cache.values()) {
-      await syncGuild(guild, choices.filter((choice) => choice.guild_id === guild.id), linked);
+      const here = (choice) => choice.guild_id === guild.id;
+      await syncGuild(guild, groupChoices.filter(here), tagChoices.filter(here), players);
     }
   } catch (err) {
     if (err.code !== MISSING_TABLE) throw err;
@@ -83,23 +107,30 @@ function roleProblem(guild, roleId) {
   return null;
 }
 
-async function syncGuild(guild, choices, linked) {
-  const cfg = getGuildConfig(guild.id);
-  const given = Object.fromEntries(Object.entries(cfg.groupRolesGiven ?? {}).map(([id, roles]) => [id, new Set(roles)]));
-  if (!choices.length && !Object.keys(given).length) return;
-
-  // group id → the roles it gets here, leaving out (and saying once) the ones the bot can't hand out.
-  const rolesOf = new Map();
-  for (const { group_id: groupId, role_id: roleId } of choices) {
+// owner id (a group's or a tag's) → the roles it gives here, leaving out (and saying once) the ones the bot can't hand out.
+function rolesByOwner(guild, choices, ownerColumn) {
+  const roles = new Map();
+  for (const choice of choices) {
+    const roleId = choice.role_id;
     const problem = roleProblem(guild, roleId);
     if (problem) {
       warnOnce(`${TAG}:${guild.id}:${roleId}`, `[${TAG}] ${guild.name}: ${problem}.`);
       continue;
     }
-    const key = String(groupId);
-    if (!rolesOf.has(key)) rolesOf.set(key, new Set());
-    rolesOf.get(key).add(roleId);
+    const owner = String(choice[ownerColumn]);
+    if (!roles.has(owner)) roles.set(owner, new Set());
+    roles.get(owner).add(roleId);
   }
+  return roles;
+}
+
+async function syncGuild(guild, groupChoices, tagChoices, players) {
+  const cfg = getGuildConfig(guild.id);
+  const given = Object.fromEntries(Object.entries(cfg.groupRolesGiven ?? {}).map(([id, roles]) => [id, new Set(roles)]));
+  if (!groupChoices.length && !tagChoices.length && !Object.keys(given).length) return;
+
+  const groupRoles = rolesByOwner(guild, groupChoices, "group_id");
+  const tagRoles = rolesByOwner(guild, tagChoices, "tag_id");
 
   // One member list per server, once: joins and role changes keep the cache up to date from then on.
   if (!loadedGuilds.has(guild.id)) {
@@ -109,11 +140,12 @@ async function syncGuild(guild, choices, linked) {
 
   let changed = false;
   const here = new Set();
-  for (const { discord_id: discordId, group_id: groupId } of linked) {
+  for (const { discordId, groupId, tagIds } of players) {
     const member = guild.members.cache.get(discordId);
     if (!member) continue;
     here.add(discordId);
-    const wanted = rolesOf.get(String(groupId)) ?? new Set();
+    const wanted = new Set(groupRoles.get(groupId) ?? []);
+    for (const tagId of tagIds) for (const roleId of tagRoles.get(tagId) ?? []) wanted.add(roleId);
     const mine = given[discordId] ?? new Set();
     for (const roleId of wanted) {
       // Already there (given by hand, or by the bot before): nothing to do, and a role given by hand stays the staff's.
