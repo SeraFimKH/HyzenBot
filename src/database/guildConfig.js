@@ -108,6 +108,9 @@ function defaultConfig() {
     // /painel → Cargo de Beta Tester (services/betaRole.js). Given: who the bot gave it to, discord id → the tester's name.
     betaRoleId: null,
     betaRoleGiven: {},
+    // Site → Configurações → Cargos do Discord (services/groupRoles.js): the roles the bot gave for the game's groups,
+    // discord id → role ids.
+    groupRolesGiven: {},
     // /painel → Bate-ponto (services/clock.js). clockRoles: who has to clock. clockAdminRoles: besides the admins, who
     // sees the team's presence and answers records. The rest is what the clock remembers by itself.
     clockRoles: [],

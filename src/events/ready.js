@@ -3,6 +3,7 @@ import { cacheGuildInvites } from "../utils/inviteTracker.js";
 import { startServerStatus } from "../services/serverStatus.js";
 import { startNicknameSync } from "../services/nicknameSync.js";
 import { startBetaRoleSync } from "../services/betaRole.js";
+import { startGroupRoleSync } from "../services/groupRoles.js";
 import { startClockSweep } from "../services/clock.js";
 import { ensureSuggestionPanels } from "../services/suggestionPanel.js";
 import { refreshTicketPanels } from "../utils/ticketPanel.js";
@@ -14,6 +15,7 @@ export async function execute(client) {
   console.log(`[ready] Bot online como ${client.user.tag}.`);
   startRaffleScheduler(client);
   startBetaRoleSync(client);
+  startGroupRoleSync(client);
   startClockSweep(client);
   startPixScheduler(client);
   startServerStatus(client);

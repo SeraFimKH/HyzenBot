@@ -2,6 +2,7 @@ import { PermissionFlagsBits } from "discord.js";
 import { getBetaTagKey, listBetaGrants, listBetaTagHolders } from "../database/betaGrants.js";
 import { findRegistrations, RegistrationStatus } from "../database/betaRegistrations.js";
 import { getGuildConfig, updateGuildConfig } from "../database/guildConfig.js";
+import { changeRole as changeRoleAs, warnOnce } from "../utils/roleChanges.js";
 
 // The beta testers' role on Discord (/painel → Cargo de Beta Tester, /config cargo-beta): whoever is a beta tester in
 // the game gets it, in every server that chose one, and loses it when they stop being one. Who that is comes from the
@@ -18,7 +19,6 @@ const TAKE_REASON = "Não é mais beta tester no jogo";
 
 let running = false;
 const loadedGuilds = new Set();
-const warned = new Set();
 
 export function startBetaRoleSync(client) {
   const sync = () => syncBetaRoles(client).catch((err) => console.error("[betaRole] sync failed", err.message));
@@ -127,18 +127,6 @@ async function takeOldRole(guild, roleId, discordIds) {
 }
 
 // True when it went through. Tried again on the next pass; said once in the console.
-async function changeRole(member, change) {
-  try {
-    await change();
-    return true;
-  } catch (err) {
-    warnOnce(`${member.guild.id}:${member.id}`, `[betaRole] Falhou ao mudar o cargo de ${member.user.tag} em ${member.guild.name}: ${err.message}`);
-    return false;
-  }
-}
-
-function warnOnce(key, message) {
-  if (warned.has(key)) return;
-  warned.add(key);
-  console.warn(message);
+function changeRole(member, change) {
+  return changeRoleAs(member, change, "betaRole");
 }
