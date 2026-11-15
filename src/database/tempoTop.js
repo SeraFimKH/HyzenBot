@@ -30,15 +30,15 @@ async function query(sql, params) {
   }
 }
 
-// [{ name, minutes }] — the first `limit` players of the period.
+// [{ id, name, minutes }] — the first `limit` players of the period.
 export async function topHours(period, limit = 10) {
   const result = await query(
-    `SELECT p.name, totals.minutes::bigint AS minutes FROM (${totals(period)}) totals
+    `SELECT p.id, p.name, totals.minutes::bigint AS minutes FROM (${totals(period)}) totals
      JOIN hyzen_players p ON p.id = totals.player_id WHERE totals.minutes > 0
      ORDER BY totals.minutes DESC, p.name LIMIT $1`,
     [limit],
   );
-  return result.rows.map((row) => ({ name: row.name, minutes: Number(row.minutes) }));
+  return result.rows.map((row) => ({ id: Number(row.id), name: row.name, minutes: Number(row.minutes) }));
 }
 
 // { position, minutes } of one player in the period (ties share the place), or null without time in it.

@@ -4,6 +4,7 @@ import { findActiveBan, findActiveMute } from "../database/punishments.js";
 import { getPresence } from "../database/redis.js";
 import { resolveTargetPlayerOrSelf } from "./playerResolver.js";
 import { findDiscordIdByPlayerId } from "../database/auth.js";
+import { skinHeadUrl } from "../database/playerSkins.js";
 import { colorForLevel, levelProgressLine } from "./levelDisplay.js";
 
 // Shared by /perfil e /stats — same read-only profile view, just under two names since some staff/players
@@ -60,7 +61,11 @@ export async function executeProfileCommand(interaction) {
     embed.addFields({ name: "🔇 Mute", value: muteLine });
   }
 
-  if (discordId) {
+  // The head of their skin (from the game, through the site); without one yet, their Discord picture.
+  const head = await skinHeadUrl(player.id, player.name).catch(() => null);
+  if (head) {
+    embed.setThumbnail(head);
+  } else if (discordId) {
     try {
       const user = await interaction.client.users.fetch(discordId);
       embed.setThumbnail(user.displayAvatarURL({ size: 256 }));

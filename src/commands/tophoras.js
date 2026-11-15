@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { findLinkByDiscordId } from "../database/auth.js";
+import { skinHeadUrl } from "../database/playerSkins.js";
 import { PERIODS, TempoTablesMissingError, standingOf, topHours } from "../database/tempoTop.js";
 import { baseEmbed, errorEmbed } from "../utils/embeds.js";
 
@@ -31,6 +32,12 @@ export async function execute(interaction) {
     const embed = baseEmbed()
       .setTitle(`⏱️ Top horas · ${PERIODS[period].label}`)
       .setDescription(lines.length ? lines.join("\n") : "Ninguém jogou neste período ainda.");
+
+    // The leader's head, from their skin.
+    const leaderHead = top[0] ? await skinHeadUrl(top[0].id, top[0].name).catch(() => null) : null;
+    if (leaderHead) {
+      embed.setThumbnail(leaderHead);
+    }
 
     if (link) {
       embed.addFields({
